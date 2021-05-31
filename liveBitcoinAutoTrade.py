@@ -66,6 +66,7 @@ while True:
             if target_price_eth < current_price_eth:        # 목표값 < 현재값
                 if krw_eth > 5000:                      # 원화가 5000보다 크면
                     upbit.buy_market_order("KRW-ETH", krw_eth*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
+                    krw_eth = 0
             
             #2.XRP
             target_price_xrp = get_target_price("KRW-XRP", 0.4)     #목표값 설정 
@@ -73,6 +74,7 @@ while True:
             if target_price_xrp < current_price_xrp:        # 목표값 < 현재값
                 if krw_xrp > 5000:                      # 원화가 5000보다 크면
                     upbit.buy_market_order("KRW-XRP", krw_xrp*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
+                    krw_xrp = 0
 
             #3.ETC
             target_price_etc = get_target_price("KRW-ETC", 0.4)     #목표값 설정 
@@ -80,6 +82,7 @@ while True:
             if target_price_etc < current_price_etc:        # 목표값 < 현재값
                 if krw_etc > 5000:                      # 원화가 5000보다 크면
                     upbit.buy_market_order("KRW-ETC", krw_etc*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
+                    krw_etc = 0
 
             #4.DOGE
             target_price_doge = get_target_price("KRW-DOGE", 0.4)     #목표값 설정 
@@ -87,6 +90,7 @@ while True:
             if target_price_doge < current_price_doge:        # 목표값 < 현재값
                 if krw_doge > 5000:                      # 원화가 5000보다 크면
                     upbit.buy_market_order("KRW-DOGE", krw_doge*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
+                    krw_doge = 0
 
             #5.SBD
             target_price_sbd = get_target_price("KRW-SBD", 0.4)     #목표값 설정 
@@ -94,6 +98,7 @@ while True:
             if target_price_sbd < current_price_sbd:        # 목표값 < 현재값
                 if krw_sbd > 5000:                      # 원화가 5000보다 크면
                     upbit.buy_market_order("KRW-SBD", krw_sbd*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
+                    krw_sbd = 0
 
         # 매도 로직 - 8:59:51 ~ 9:00:00
         else:
