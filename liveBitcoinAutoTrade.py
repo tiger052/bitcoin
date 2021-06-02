@@ -35,6 +35,7 @@ def get_current_price(ticker):
 
 # 잔고 조회
 def show_current_state():
+    print("Current State")
     print('Current KRW : ',upbit.get_balance("KRW"))         # 보유 현금 조회
     print('Current ETH : ',upbit.get_balance("KRW-ETH"))     # KRW-ETH 조회
     print('Current ETC : ',upbit.get_balance("KRW-ETC"))     # KRW-XRP 조회
@@ -42,29 +43,32 @@ def show_current_state():
     print('Current SBD : ',upbit.get_balance("KRW-SBD"))     # KRW-SBD 조회
     print('Current XLM : ',upbit.get_balance("KRW-XLM"))     # KRW-XLM 조회
 
+def reset_state():
+    print("State Init")
+    # 코인 배팅 설정
+    krw = get_balance("KRW")            # 원화 조회
+
+    krw_eth = krw * 0.5     #이더리움
+    krw_xrp = krw * 0.2     #리플
+    krw_etc = krw * 0.15     #이더리움 클래식
+    krw_doge = krw * 0.05     #도지코인
+    krw_sbd = krw * 0.05     #스팀달러
+    krw_xlm = krw * 0.05     #스텔라루멘
+
+    print('eth : ',krw_eth)    
+    print('xrp : ',krw_xrp)    
+    print('etc : ',krw_etc)    
+    print('doge: ',krw_doge)    
+    print('sbd : ',krw_sbd)    
+    print('xlm : ',krw_xlm)    
+
 # 로그인
 upbit = pyupbit.Upbit(access, secret)
 print("autotrade start")
 
 show_current_state()
 
-# 코인 배팅 설정
-krw = get_balance("KRW")            # 원화 조회
-
-krw_eth = krw * 0.5     #이더리움
-krw_xrp = krw * 0.2     #리플
-krw_etc = krw * 0.15     #이더리움 클래식
-krw_doge = krw * 0.05     #도지코인
-krw_sbd = krw * 0.05     #스팀달러
-krw_xlm = krw * 0.05     #스텔라루멘
-
-print('eth : ',krw_eth)    
-print('xrp : ',krw_xrp)    
-print('etc : ',krw_etc)    
-print('doge: ',krw_doge)    
-print('sbd : ',krw_sbd)    
-print('xlm : ',krw_xlm)    
-
+reset_state()
 
 # 자동매매 시작
 while True:
@@ -72,6 +76,7 @@ while True:
         now = datetime.datetime.now()                       # 현재시간을 받아옴 
         start_time = get_start_time("KRW-ETH")              #9:00
         end_time = start_time + datetime.timedelta(days=1)  #9:00 + 1일
+        
         krw = get_balance("KRW")            # 원화 조회
         if krw < 5000:
             time.sleep(1)
@@ -87,9 +92,6 @@ while True:
                     upbit.buy_market_order("KRW-ETH", krw_eth*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
                     krw_eth = 0
                     print('ETH Order : ', krw_eth * 0.9995)
-                else:
-                    upbit.buy_market_order("KRW-ETH", krw*0.9995) 
-                    print('ETH Order : ', krw * 0.9995)
             
             #2.XRP
             target_price_xrp = get_target_price("KRW-XRP", 0.5)     #목표값 설정 
@@ -99,9 +101,7 @@ while True:
                     upbit.buy_market_order("KRW-XRP", krw_xrp*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
                     print('XRP Order : ', krw_xrp * 0.9995)
                     krw_xrp = 0
-                else:
-                    upbit.buy_market_order("KRW-XRP", krw*0.9995) 
-                    print('XRP Order : ', krw * 0.9995)
+                
             #3.ETC
             target_price_etc = get_target_price("KRW-ETC", 0.5)     #목표값 설정 
             current_price_etc = get_current_price("KRW-ETC")        # 현재 값
@@ -110,9 +110,7 @@ while True:
                     upbit.buy_market_order("KRW-ETC", krw_etc*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
                     print('ETC Order : ', krw_etc * 0.9995)
                     krw_etc = 0
-                else:
-                    upbit.buy_market_order("KRW-ETC", krw*0.9995) 
-                    print('ETC Order : ', krw * 0.9995)
+                
             #4.DOGE
             target_price_doge = get_target_price("KRW-DOGE", 0.5)     #목표값 설정 
             current_price_doge = get_current_price("KRW-DOGE")        # 현재 값
@@ -121,9 +119,6 @@ while True:
                     upbit.buy_market_order("KRW-DOGE", krw_doge*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
                     print('DOGE Order : ', krw_doge * 0.9995)
                     krw_doge = 0
-                else:
-                    upbit.buy_market_order("KRW-DOGE", krw*0.9995)     
-                    print('DOGE Order : ', krw * 0.9995)
 
             #5.SBD
             target_price_sbd = get_target_price("KRW-SBD", 0.5)     #목표값 설정 
@@ -133,9 +128,6 @@ while True:
                     upbit.buy_market_order("KRW-SBD", krw_sbd*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
                     print('SBD Order : ', krw_sbd * 0.9995)
                     krw_sbd = 0
-                else:
-                    upbit.buy_market_order("KRW-SBD", krw*0.9995)     
-                    print('DOGE Order : ', krw * 0.9995)
 
             #6.XLM
             target_price_xlm = get_target_price("KRW-XLM", 0.5)     #목표값 설정 
@@ -145,9 +137,6 @@ while True:
                     upbit.buy_market_order("KRW-XLM", krw_xlm*0.9995)       #비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정        
                     print('XLM Order : ', krw_xlm * 0.9995)
                     krw_sbd = 0
-                else:
-                    upbit.buy_market_order("KRW-XLM", krw*0.9995)     
-                    print('XLM Order : ', krw * 0.9995)
 
         # 매도 로직 - 8:59:51 ~ 9:00:00
         else:
@@ -181,6 +170,7 @@ while True:
                 upbit.sell_market_order("KRW-XLM", xlm*0.9995)          #비트코인 매도 로직 - 수수료 0.0005 고료
                 print('XLM sell : ', xlm * 0.9995)
 
+            reset_state()
         time.sleep(1)
         
     except Exception as e:
