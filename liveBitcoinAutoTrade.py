@@ -80,12 +80,14 @@ def send_message(text):
     send_message_to_slack("[" + date_time +"]" + text)
 
 def send_message_to_slack(text): 
-    url = "https://hooks.slack.com/services/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" 
+    url = "https://hooks.slack.com/services/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"
     payload = { "text" : text }
     requests.post(url, json=payload)
 
 # 로그인
 upbit = pyupbit.Upbit(access, secret)
+print("login")
+send_message_to_slack("ggggg")
 send_message("Auto BitCoin Trade Start!!")
 
 show_current_state()
