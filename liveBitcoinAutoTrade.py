@@ -82,7 +82,7 @@ def send_message(text):
     send_message_to_slack("[" + date_time +"]" + text)
 
 def send_message_to_slack(text): 
-    url = "https://hooks.slack.com/services/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"
+    url = "https://hooks.slack.com/services/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"
     payload = { "text" : text }
     requests.post(url, json=payload)
 
