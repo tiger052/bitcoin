@@ -32,11 +32,13 @@ targetPercent = 0.8                             # 변동성 돌파 목표치 비
 tradeVolumeMin = 5000                           # 최소 거래 값 - 5000원 이상
 feePercent = 0.9995                             # 수수료 퍼센트
 isLive = True                                   # 실제 매수, 매도 여부
+isKakao = True                                  # 실제 카카오 메시지 수행 여부
 ########################
 
 def init():
-    kakaoControl.initKakao()       # 카카오 Module 초기화
-    kakaoControl.refreshToken()
+    if isKakao:
+        kakaoControl.initKakao()       # 카카오 Module 초기화
+        kakaoControl.refreshToken()
 
 # Log 저장 로직
 def sendLogMessage():
@@ -44,19 +46,24 @@ def sendLogMessage():
     try:
         with open(path, 'r') as file:
             doc = file.read()
-            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], doc)
+            if isKakao:
+                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], doc)
         with open(path,'w') as file:
             file.write('')
     except Exception as e:
         print(e)
 
 def autoTradingTest():
+    global tradeState, targetCoin
     init()
     #sendLogMessage()
-
+    now = datetime.datetime.now()
+    krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+    unit = upbitControl.get_balance(upbitInst, targetCoin.value)
+    #print("[" + now.strftime('%H:%M:%S') + "] 상황 보고\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit))
+    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], "[" + now.strftime('%H:%M:%S') + "] 상황 보고\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit))
     print(upbitControl.get_ticker())
 
-    now = datetime.datetime.now()  # 현재시간을 받아옴
     #start_time = upbitControl.get_start_time("KRW-BTC")  # 9:00
     #end_time = start_time + datetime.timedelta(days=1)  # 9:00 + 1일
     start_time = now - datetime.timedelta(seconds=1)
@@ -66,7 +73,7 @@ def autoTradingTest():
     print(start_time)
     print(end_time)
 
-    global tradeState, targetCoin
+
     upbitControl.get_yesterday_ma5(targetCoin.value)
     print(targetCoin.value)
 
@@ -77,6 +84,11 @@ def autoTradingTest():
                 print(tradeState.value)
             now = datetime.datetime.now()
             print(now.strftime('%H:%M:%S'))
+            print("min : ", now.strftime('%M'), "sceond" ,now.strftime('%S'))
+            min = now.strftime('%M')
+            sec = now.strftime('%S')
+            if now.strftime('%M') == '02' and now.strftime('%S') == '00':
+                print("same!!!!!")
 
 
             if start_time < now < end_time:
@@ -119,7 +131,8 @@ def autoTradingLive():
     init()
     # 2. 트레이딩 시작 알림
     now = datetime.datetime.now()
-    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] Bitcoin 트래이딩 시작!!\n" +str(trademode.value))
+    if isKakao:
+        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] Bitcoin 트래이딩 시작!!\n" +str(trademode.value))
 
     # 3. 자동매매 시작
     if trademode == TradeMode.break_out_range:  # 변동성 돌파 전략 방법
@@ -130,26 +143,28 @@ def autoTradingLive():
                 start_time = upbitControl.get_start_time(targetCoin.value)  # 당일 시작 시간 - 9:00
                 end_time = start_time + datetime.timedelta(days=1)          # 명일 시작 시간 - 9:00 (+ 1일)
 
-                # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:50
-                if start_time < now < end_time - datetime.timedelta(seconds=10):
+                # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:55
+                if start_time < now < end_time - datetime.timedelta(seconds=5):
                     target_price = upbitControl.get_target_price(targetCoin.value, targetPercent)  # 목표값 설정
                     current_price = upbitControl.get_current_price(targetCoin.value)               # 현재 값
 
                     if target_price < current_price:  # 목표값 < 현재값
-                        krw = upbitControl.get_balance("KRW")  # 원화 조회
+                        krw = upbitControl.get_balance(upbitInst,"KRW")  # 원화 조회
                         if krw > tradeVolumeMin:  # 원화가 5000보다 크면
                             if isLive:
                                 upbitInst.buy_market_order(targetCoin.value, krw * feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
-                                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin.value) + " - " + str(5000 * feePercent))
+                                if isKakao:
+                                    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin.value) + " - " + str(5000 * feePercent))
                             else:
                                 print("매수 처리", targetCoin.value, krw * feePercent)
 
-                # 3.3 매도 로직 - 명일 8:59:51 ~ 9:00:00
+                # 3.3 매도 로직 - 명일 8:59:56 ~ 9:00:00
                 else:
-                    unit = upbitControl.get_balance(targetCoin.value)
+                    unit = upbitControl.get_balance(upbitInst,targetCoin.value)
                     if isLive:
                         upbitInst.sell_market_order(targetCoin.value, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
-                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin.value) + " - " + str(unit))
+                        if isKakao:
+                            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin.value) + " - " + str(unit))
                     else:
                         print("매도 처리", targetCoin.value, unit)
 
@@ -157,9 +172,19 @@ def autoTradingLive():
                 if now.strftime('%H:%M:%S') == "08:59:59":          # reset 전 Log 전송
                     sendLogMessage()
 
+                # 3.5 정시 정기 보고
+                if now.strftime('%M') == '00' and now.strftime('%S') == '00':
+                    if isKakao:
+                        krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+                        unit = upbitControl.get_balance(upbitInst, targetCoin.value)
+                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%H:%M:%S') + "] 상황 보고\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit))
+
             except Exception as e:
                 print(e)
-                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 에러발생!!!\n" + str(e))
+                if isKakao:
+                    krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+                    unit = upbitControl.get_balance(upbitInst, targetCoin.value)
+                    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 에러발생!!!\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit) + "\n" + str(e))
             time.sleep(1)
 
     elif trademode == TradeMode.break_out_range_and_ma5:    # 변동성 돌파 전략 + 전일 기준 5일 이동 평균값
@@ -177,11 +202,12 @@ def autoTradingLive():
                     ma5 = upbitControl.get_yesterday_ma5(targetCoin.value)
 
                     if (current_price > target_price) and (current_price > ma5):  # 목표가 뿐만 아니라 이동평균과 현재가를 비교한다
-                        krw = upbitControl.get_balance("KRW")  # 원화 조회
+                        krw = upbitControl.get_balance(upbitInst,"KRW")  # 원화 조회
                         if krw > tradeVolumeMin:  # 원화가 5000보다 크면
                             if isLive:
                                 upbitInst.buy_market_order(targetCoin.value, krw * feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
-                                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin.value) + " - " + str(5000 * feePercent))
+                                if isKakao:
+                                    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin.value) + " - " + str(5000 * feePercent))
                             else:
                                 print("매수 처리",targetCoin.value,krw * feePercent)
                         else:
@@ -189,10 +215,11 @@ def autoTradingLive():
 
                 # 3.3 매도 로직 - 명일 8:59:51 ~ 9:00:00
                 else:
-                    unit = upbitControl.get_balance(targetCoin.value)
+                    unit = upbitControl.get_balance(upbitInst,targetCoin.value)
                     if isLive:
                         upbitInst.sell_market_order(targetCoin.value, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
-                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin.value) + " - " + str(unit))
+                        if isKakao:
+                            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin.value) + " - " + str(unit))
                     else:
                         print("매도 처리", targetCoin.value, unit)
 
@@ -200,9 +227,19 @@ def autoTradingLive():
                 if now.strftime('%H:%M:%S') == "08:59:59":  # reset 전 Log 전송
                     sendLogMessage()
 
+                # 3.5 정시 정기 보고
+                if now.strftime('%M') == '00' and now.strftime('%S') == '00':
+                    if isKakao:
+                        krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+                        unit = upbitControl.get_balance(upbitInst, targetCoin.value)
+                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%H:%M:%S') + "] 상황 보고\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit))
+
             except Exception as e:
                 print(e)
-                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 에러발생!!!\n" + str(e))
+                if isKakao:
+                    krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+                    unit = upbitControl.get_balance(upbitInst, targetCoin.value)
+                    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 에러발생!!!\n현재 원화 : " + str(krw) + "\n코인 - " + targetCoin.value + " : " + str(unit) + "\n" + str(e))
 
             time.sleep(1)
     else:
