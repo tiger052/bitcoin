@@ -18,6 +18,9 @@ class TradeMode(Enum):
     reading = "준비중"
 
 tickerlist = []                                 # Tickers
+buy_price = 0                                   # 매수 시 금액
+sell_price = 0                                  # 판매 하기 위한 금액
+max_price = 0                                   # 매수 후 최고 가격
 
 ## Trading Setting #####
 trademode = TradeMode.break_out_range           # 트레이드 모드 설정
@@ -25,18 +28,20 @@ targetCoin = "KRW-XRP"                          # 트레이드 할 Coin
 tradeState = TradeState.ready                   # 트레이드 상태
 targetPercent = 0.5                             # 변동성 돌파 목표치 비율
 tradeVolumeMin = 5000                           # 최소 거래 값 - 5000원 이상
-AllowCoinNum = 5000                             # 최소 코인 가격
+AllowCoinPrice = 5000                           # 최소 코인 가격
 feePercent = 0.9995                             # 수수료 퍼센트
-isLive = True                                  # 실제 매수, 매도 여부
-isKakao = True                                 # 실제 카카오 메시지 수행 여부
-isAutoChangeCoin = False                        # 자동으로 Coin 변경
+isLive = True                                   # 실제 매수, 매도 여부
+isKakao = True                                  # 실제 카카오 메시지 수행 여부
+isAutoChangeCoin = True                        # 자동으로 Coin 변경
 ########################
 
 def init():
+    global curCoinIdx
     if isKakao:
         kakaoControl.initKakao()       # 카카오 Module 초기화
         kakaoControl.refreshToken()
     tickerlist = list(upbitControl.get_ticker())        # ticker 리스터 획득
+    curCoinIdx = 0                              # 현재 코인의 Index
 
 # Log 저장 로직
 def sendLogMessage():
@@ -236,6 +241,8 @@ def autoTradingTest():
     """
 
 def autoTradingLive():
+    global curCoinIdx, isAutoChangeCoin
+
     # 1. 초기화
     init()
     # 2. 트레이딩 시작 알림
@@ -267,6 +274,14 @@ def autoTradingLive():
                                     kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
                             else:
                                 print("매수 처리", targetCoin, krw * feePercent)
+                    else:
+                        if isAutoChangeCoin == True:
+                            global curCoinIdx, targetCoin
+                            curCoinIdx = curCoinIdx + 1
+                            if curCoinIdx > len(tickerlist) - 1:
+                                global curCoinIdx
+                                curCoinIdx = 0
+                            targetCoin = tickerlist[curCoinIdx]
 
                 # 3.3 매도 로직 - 명일 8:59:56 ~ 9:00:00
                 else:
@@ -321,6 +336,14 @@ def autoTradingLive():
                                     kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
                             else:
                                 print("매수 처리", targetCoin, krw * feePercent)
+                    else:
+                        if isAutoChangeCoin == True:
+                            global curCoinIdx, targetCoin
+                            curCoinIdx = curCoinIdx + 1
+                            if curCoinIdx > len(tickerlist) - 1:
+                                global curCoinIdx
+                                curCoinIdx = 0
+                            targetCoin = tickerlist[curCoinIdx]
 
                 # 3.3 매도 로직 - 명일 8:59:56 ~ 9:00:00
                 else:
