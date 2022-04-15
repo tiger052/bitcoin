@@ -59,7 +59,8 @@ def get_start_time(ticker):
 #----------------------------------------------#
 def get_current_price(ticker):
     orderbook = pyupbit.get_orderbook(ticker)
-    return orderbook[0]["orderbook_units"][0]["ask_price"]      # get_orderbook 은 매도 매수가 리스트를 반환한다.
+    return orderbook[0]["orderbook_units"][0]["ask_price"]      # get_orderbook 은 매도 매수가 리스트를 반환한다. linux
+    #return orderbook["orderbook_units"][0]["ask_price"]  # get_orderbook 은 매도 매수가 리스트를 반환한다. window
 
 #----------------------------------------------#
 # 전일 5일 이동 평균 값 조회
