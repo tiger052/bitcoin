@@ -195,8 +195,8 @@ def autoTradingLive():
     init()
     # 2. 트레이딩 시작 알림
     now = datetime.datetime.now()
-    if isKakao:
-        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] Bitcoin 트래이딩 시작!!\n" +str(trademode.value))
+    #if isKakao:
+    #    kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] Bitcoin 트래이딩 시작!!\n" +str(trademode.value))
 
     # 3. 자동매매 시작
     if trademode == TradeMode.break_out_range:  # 변동성 돌파 전략 방법
