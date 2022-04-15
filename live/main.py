@@ -237,12 +237,12 @@ def autoTradingLive():
 
                 # 하루 마감시 마지막 Log 전송
                 if now.strftime('%H:%M:%S') == "08:59:59":
-                    sendLogMessage("KRW : " + str(krw) + ", Coin Name :" + str(targetCoin.value) + ", Unit : " + str(unit) + ", Target Price : " + str(target_price) + ", Current Price : " + str(current_price))
+                    sendLogMessage("KRW : " + str(krw) + ", Coin Name :" + str(targetCoin.value) + ", Unit : " + str(unit) + ", Target Price : " + str(target_price) + ", Current Price : " + str(current_price) +"\n------------")
 
                 # 3.5 정시 정기 보고
                 if now.strftime('%M') == '09' and now.strftime('%S') == '00':
                     if isKakao:
-                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%H:%M:%S') + "] 상황 보고\nKRW : " + str(krw) + ", Coin Name :" + str(targetCoin.value) + ", Unit : " + str(unit) + ", Target Price : " + str(target_price) + ", Current Price : " + str(current_price))
+                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 상황 보고\nKRW : " + str(krw) + ", Coin Name :" + str(targetCoin.value) + ", Unit : " + str(unit) + ", Target Price : " + str(target_price) + ", Current Price : " + str(current_price))
 
             except Exception as e:
                 print(e)
