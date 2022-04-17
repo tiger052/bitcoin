@@ -298,8 +298,8 @@ def autoTradingLive():
                 krw = upbitControl.get_balance(upbitInst, "KRW")            # 원화 조회
                 unit = upbitControl.get_balance(upbitInst, targetCoin)      # 보유 코인
 
-                # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:55
-                if start_time < now < end_time - datetime.timedelta(seconds=5):
+                # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:45
+                if start_time < now < end_time - datetime.timedelta(seconds=15):
                     if krw > tradeVolumeMin:  # 원화가 5000보다 크면
                         if target_price < current_price:  # 목표값 < 현재값
                             if isAutoChangeCoin == True:
@@ -311,6 +311,11 @@ def autoTradingLive():
 
                                 if isLive:
                                     upbitInst.buy_market_order(targetCoin, krw * feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
+                                    addLog(
+                                        "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수 - KRW : " + str(
+                                            krw) + ", Coin Name :" + str(
+                                            targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
+                                            target_price) + ", Current Price : " + str(current_price))
                                     if isKakao:
                                         kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
                                 else:
@@ -321,14 +326,23 @@ def autoTradingLive():
                     else:       # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
                         pass
 
-                # 3.3 매도 로직 - 명일 8:59:56 ~ 9:00:00
+                # 3.3 매도 로직 - 명일 8:59:46 ~ 9:00:00
                 else:
                     if isLive:
-                        upbitInst.sell_market_order(targetCoin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
-                        if isKakao:
-                            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin) + " - " + str(unit))
+                        if unit > 0:
+                            upbitInst.sell_market_order(targetCoin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
+                            addLog(
+                                "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 - KRW : " + str(krw) + ", Coin Name :" + str(
+                                    targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
+                                    target_price) + ", Current Price : " + str(current_price))
+                            if isKakao:
+                                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin) + " - " + str(unit))
                     else:
-                        print("매도 처리", targetCoin, unit)
+                        addLog(
+                            "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 완료 - KRW : " + str(
+                                krw) + ", Coin Name :" + str(
+                                targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
+                                target_price) + ", Current Price : " + str(current_price))
 
                 logOutput(now,krw,targetCoin, unit, target_price, current_price)
             except Exception as e:
