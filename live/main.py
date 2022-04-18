@@ -17,7 +17,9 @@ class TradeMode(Enum):
     break_out_range_and_down_sell = "변동성 돌파 전략 + 하락시 매도 전략"      # 매수 : 변동성 돌파 전략 , 매도 : 일정 기준 하락시
     reading = "준비중"
 
-tickerlist = []                                 # Tickers
+usedCoindic = {}                                # 매수시 Dictionary에 저장하여 관리 (매도시 사용)
+tickerlist = []                                 # Tickers 전체 list
+coinlist = []                                   # 거래할 코인 list (코인 최소 가격으로 걸러진 금액)
 buy_price = 0                                   # 매수 시 금액
 sell_price = 0                                  # 판매 하기 위한 금액
 max_price = 0                                   # 매수 후 최고 가격
@@ -36,13 +38,13 @@ isAutoChangeCoin = True                        # 자동으로 Coin 변경
 ########################
 
 def init():
-    global curCoinIdx, tickerlist
+    global curCoinIdx
     if isKakao:
         kakaoControl.initKakao()       # 카카오 Module 초기화
         kakaoControl.refreshToken()
-    tickerlist = list(upbitControl.get_ticker())        # ticker 리스터 획득
-    print(tickerlist)
+
     curCoinIdx = 0                              # 현재 코인의 Index
+    checkCoinInfo()
 
 # Log 저장 로직
 def sendLogMessage():
@@ -81,11 +83,32 @@ def addLog(text):
         print(e)
 
 def nextCoin():
-    global  curCoinIdx, tickerlist, targetCoin
+    global  curCoinIdx, coinlist, targetCoin
     curCoinIdx = curCoinIdx + 1
-    if curCoinIdx > len(tickerlist) - 1:
+    if curCoinIdx > len(coinlist) - 1:
         curCoinIdx = 0
-    targetCoin = tickerlist[curCoinIdx]
+    targetCoin = coinlist[curCoinIdx]
+
+def checkCoinInfo():
+    global tickerlist, coinlist, usedCoindic, targetCoin
+    print("====Check Coin Info Start!====")
+    tickerlist = list(upbitControl.get_ticker())        # ticker 리스터 획득
+    print("ticker list - " + str(len(tickerlist)) + ", " + str(tickerlist))
+
+    for ticker in tickerlist:
+        currentPrice = upbitControl.get_current_price(ticker)
+        balance = upbitControl.get_balance(upbitInst, ticker)
+        if balance > 0:
+            if currentPrice * balance > 5000:
+                usedCoindic[ticker] = balance
+                targetCoin = ticker
+        if currentPrice < 5000:
+            coinlist.append(ticker)
+    print("used coin dic - " + str(len(usedCoindic)) + ", "+ str(usedCoindic))
+    print("real coin list - " + str(len(coinlist)) + ", " + str(coinlist))
+    print("current Target Coin - " + targetCoin)
+    print("====Complete Check Coin Info====")
+
 
 def logOutput(now, krw, targetCoin, unit, target_price, current_price):
     # 3.4 Log 저장 로직
@@ -110,8 +133,7 @@ def logOutput(now, krw, targetCoin, unit, target_price, current_price):
                                              target_price) + ", Current Price : " + str(current_price))
 
 def autoTradingTest():
-    global tradeState, targetCoin, AllowCoinPrice, tickerlist
-
+    global tradeState, targetCoin, curCoinIdx, AllowCoinPrice, tickerlist, usedCoindic
     """
     init()
     #sendLogMessage()
@@ -227,23 +249,39 @@ def autoTradingTest():
     """
     # Coin 변경 로직
     #"""
-    tickerlist = list(upbitControl.get_ticker())
-    # print(upbitControl.get_ticker())
-    tickerlist = ["KRW-BTC", "KRW-ETH", "KRW-ETC"]
+    #tickerlist = list(upbitControl.get_ticker())
+    #print(upbitControl.get_ticker())
+    coinlist = ["KRW-BTC", "KRW-ETH", "KRW-ETC"]
     curCoinIdx = 0
-    targetCoin = tickerlist[curCoinIdx]
+    targetCoin = coinlist[curCoinIdx]
+    usedCoindic["KRW-BTC"] = 5.5
+    usedCoindic["KRW-ETH"] = 3.5
+    init()
+    print(usedCoindic)
+    for data in usedCoindic:
+        print(data, usedCoindic[data])
+    usedCoindic.pop("KRW-BTC")
+    #usedTickerdic.clear()
+
+    print(usedCoindic)
+
+    current_price = upbitControl.get_current_price("KRW-BTC")  # 현재 값
+    unit = upbitControl.get_balance(upbitInst, "KRW-BTC")  # 보유 코인
+    print(current_price, unit, current_price * unit)
+    if current_price * unit > 5000:
+        print("sell")
+    else:
+        print("cant sell")
     while True:
 
         target_price = upbitControl.get_target_price(targetCoin, targetPercent)  # 목표값 설정
         current_price = upbitControl.get_current_price(targetCoin)  # 현재 값
         print(targetCoin + ", 목표가 : " + str(target_price) + ", 현재가 : " + str(current_price))
         curCoinIdx = curCoinIdx + 1
+        if curCoinIdx > len(coinlist) - 1:
+            curCoinIdx = 0
+
         if target_price < current_price:
-            if curCoinIdx > len(tickerlist) - 1:
-                global curCoinIndx
-                curCoinIdx = 0
-
-
             if target_price > AllowCoinPrice:
                 time.sleep(0.1)
                 continue
@@ -251,7 +289,8 @@ def autoTradingTest():
             if target_price < current_price:  # 목표값 < 현재값
                 print("매수")
         else:
-            targetCoin = tickerlist[curCoinIdx]
+            print(len(coinlist))
+            targetCoin = coinlist[curCoinIdx]
         time.sleep(1)
 
     #"""
@@ -275,7 +314,7 @@ def autoTradingTest():
     """
 
 def autoTradingLive():
-    global curCoinIdx, isAutoChangeCoin, targetCoin, tickerlist, trademode
+    global curCoinIdx, isAutoChangeCoin, targetCoin, trademode, usedCoindic
 
     # 1. 초기화
     init()
@@ -311,6 +350,7 @@ def autoTradingLive():
 
                                 if isLive:
                                     upbitInst.buy_market_order(targetCoin, krw * feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
+                                    usedCoindic[targetCoin] = current_price                 # 매수 dic에 저장
                                     addLog(
                                         "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수 - KRW : " + str(
                                             krw) + ", Coin Name :" + str(
@@ -329,14 +369,19 @@ def autoTradingLive():
                 # 3.3 매도 로직 - 명일 8:59:46 ~ 9:00:00
                 else:
                     if isLive:
-                        if unit > 0:
-                            upbitInst.sell_market_order(targetCoin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
-                            addLog(
-                                "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 - KRW : " + str(krw) + ", Coin Name :" + str(
-                                    targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
-                                    target_price) + ", Current Price : " + str(current_price))
-                            if isKakao:
-                                kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin) + " - " + str(unit))
+                        if len(usedCoindic) > 0:
+                            for coin in usedCoindic:
+                                current_price = upbitControl.get_current_price(coin)  # 현재 값
+                                unit = upbitControl.get_balance(upbitInst, coin)  # 보유 코인
+                                if current_price * unit > 5000:
+                                    upbitInst.sell_market_order(coin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
+                                    usedCoindic.pop(coin)
+                                    addLog(
+                                        "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 - KRW : " + str(krw) + ", Coin Name :" + str(
+                                            targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
+                                            target_price) + ", Current Price : " + str(current_price))
+                                    if isKakao:
+                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(targetCoin) + " - " + str(unit))
                     else:
                         addLog(
                             "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 완료 - KRW : " + str(
@@ -379,9 +424,9 @@ def autoTradingLive():
                     else:
                         if isAutoChangeCoin == True:
                             curCoinIdx = curCoinIdx + 1
-                            if curCoinIdx > len(tickerlist) - 1:
+                            if curCoinIdx > len(coinlist) - 1:
                                 curCoinIdx = 0
-                            targetCoin = tickerlist[curCoinIdx]
+                            targetCoin = coinlist[curCoinIdx]
 
                 # 3.3 매도 로직 - 명일 8:59:56 ~ 9:00:00
                 else:
