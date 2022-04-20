@@ -414,7 +414,7 @@ def autoTradingLive():
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
                     if unit > 0:
                         tradeState = TradeState.waiting
-                        addLog("[TradeState - waiting]")
+                        addLog("[TradeState - waiting] " + str(targetCoin) + " : " + str(unit))
 
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         pass
