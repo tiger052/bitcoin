@@ -402,7 +402,8 @@ def autoTradingLive():
                                 if isAutoChangeCoin == True:
                                     nextCoin()
                         else:       # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
-                            pass
+                            tradeState = TradeState.complete_trade
+                            addLog("[TradeState - complete_trade]")
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
                     else:
                         tradeState = TradeState.selling
