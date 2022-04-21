@@ -39,6 +39,14 @@ def get_target_price(ticker, k):                # ticker : 어떤 코인인지 ,
     return target_price
 
 #----------------------------------------------#
+# 시가 조회
+#----------------------------------------------#
+def get_start_price(ticker):                # ticker : 어떤 코인인지
+    df = pyupbit.get_ohlcv(ticker, interval="day", count=2)
+    return df.iloc[0]['close']
+
+
+#----------------------------------------------#
 # 티커 조회 : 티커
 #----------------------------------------------#
 def get_ticker(market='KRW'):
