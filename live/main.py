@@ -467,12 +467,12 @@ def autoTradingLive():
 
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
 
-                        if now.strftime('%H:%M:%S') == "08:59:59" | now.strftime('%H:%M:%S') == "08:59:58":
+                        if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
                             tradeState = TradeState.ready
                             addLog("[TradeState - ready]")
 
                 elif tradeState == TradeState.complete_sell:
-                    if now.strftime('%H:%M:%S') == "08:59:59" | now.strftime('%H:%M:%S') == "08:59:58":
+                    if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
                         tradeState = TradeState.ready
                         addLog("[TradeState - ready]")
 
@@ -558,11 +558,10 @@ def autoTradingLive():
             time.sleep(1)
     # === 변동성 돌파 전략 + 이동 평균 ====
     elif trademode == TradeMode.break_out_range_and_down_sell:
-        pass
+       pass
     else:
         print("준비중")
         time.sleep(1)
-
 
 if isLive:
     autoTradingLive()
