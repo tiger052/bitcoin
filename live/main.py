@@ -716,12 +716,12 @@ def autoTradingLive():
 
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
 
-                        if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
+                        if now.strftime('%H:%M:%S') == "08:59:59" or now.strftime('%H:%M:%S') == "08:59:58":
                             tradeState = TradeState.ready
                             addLog("[TradeState - ready]")
 
                 elif tradeState == TradeState.complete_sell:
-                    if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
+                    if now.strftime('%H:%M:%S') == "08:59:59" or now.strftime('%H:%M:%S') == "08:59:58":
                         tradeState = TradeState.ready
                         addLog("[TradeState - ready]")
 
