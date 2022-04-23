@@ -40,13 +40,13 @@ targetCoin = "KRW-XRP"                          # 트레이드 할 Coin
 tradeState = TradeState.initialize              # 트레이드 상태
 processState = ProcessState.complete            # 처리 상태
 targetPercent = 0.5                             # 변동성 돌파 목표치 비율
-targetSellPercent = 0.02                        # 판매 목표 치 비율( target price 에 해당 비율의 곱)
+targetSellPercent = 0.015                        # 판매 목표 치 비율( target price 에 해당 비율의 곱)
 tradeVolumeMin = 5000                           # 최소 거래 값 - 5000원 이상
 AllowCoinPrice = 5000                           # 최소 코인 가격
 feePercent = 0.9995                             # 수수료 퍼센트
-priceComparisonsMax = 5                         # 호가 비교 횟수
+priceComparisonsMax = 2                         # 호가 비교 횟수
 gravityDepth = 0.1                              # 호가 비교시 단계별 depth 값
-bid_buy_ratio = 1.5                             # 호가 매수 비율 (해당 비율이 넘을시 매수)
+bid_buy_ratio = 3                               # 호가 매수 비율 (해당 비율이 넘을시 매수)
 isGravity = True                                # 호가 비교시 비중을 줄지 여부
 isLive = True                                   # 실제 매수, 매도 여부
 isKakao = True                                  # 실 제 카카오 메시지 수행 여부
@@ -142,7 +142,7 @@ def checkCoinInfo():
             if curPrice * balance > 5000:
                 usedCoindic[ticker] = balance
                 targetCoin = ticker
-        if curPrice < 5000:
+        if 1 < curPrice < 5000:                 # 소수점 이하 coin 은 배제한다
             coinlist.append(ticker)
     print("used coin dic - " + str(len(usedCoindic)) + ", "+ str(usedCoindic))
     print("real coin list - " + str(len(coinlist)) + ", " + str(coinlist))
@@ -857,10 +857,14 @@ def autoTradingLive():
                         addLog("[TradeState - drop_check]")
 
                 elif tradeState == TradeState.drop_check:
+                    unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
                     sell_price = max_price - target_price * targetSellPercent
                     current_price = upbitControl.get_current_price(targetCoin)  # 현재 값
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
-
+                        if unit == 0:       # 외부에서 강제 판매 한 상황
+                            addLog("하락장 체크 중 외부 매도 감지 !!!")
+                            tradeState = TradeState.ready
+                            addLog("[TradeState - selling]")
                         if max_price < current_price:  # 최고 가격을 갱신했다면
                             max_price = current_price
                             sell_price = max_price - target_price * targetSellPercent
@@ -967,5 +971,5 @@ def autoTradingLive():
 
 if isLive:
     autoTradingLive()
-else:
-    autoTradingTest()
+#else:
+ #   autoTradingTest()
