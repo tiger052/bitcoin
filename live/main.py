@@ -59,7 +59,7 @@ isAutoChangeCoin = True                         # 자동으로 Coin 변경
 
 #초기화 처리
 def init():
-    addLog("[TradeState - init] - Trade Mode : {}".format(trademode.value))
+    addLog("[TradeState - init] - Trade Mode : {} ".format(trademode.value))
     global tradeState, upbitInst, processState
     processState = ProcessState.processing
     if isKakao:
@@ -70,7 +70,7 @@ def init():
 
     processState = ProcessState.complete
     tradeState = TradeState.ready
-    addLog("[TradeState - ready]")
+    addLog("\n[TradeState - ready]")
 
 #셋팅 정보 초기화
 def reset():
@@ -87,7 +87,7 @@ def reset():
 
     processState = ProcessState.complete
     tradeState = TradeState.trading
-    addLog("[TradeState - Trading]")
+    addLog("\n[TradeState - Trading]")
 
 # Log 저장 로직
 def sendLogMessage():
@@ -197,7 +197,7 @@ def priceComparisons(ticker):
 def logOutput(now, krw, targetCoin, unit, target_price, current_price):
     # 3.4 Log 저장 로직
     if now.strftime('%S') == '00':  # 분당 저장
-        addLog(">> [{}] 분당 보고 KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
+        addLog(">> [{}] 분당 보고 - STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'),tradeState.value, krw, targetCoin, unit, target_price, current_price))
 
     # 하루 마감시 마지막 Log 전송
     if now.strftime('%H:%M:%S') == "08:59:59":
@@ -439,7 +439,7 @@ def autoTradingLive():
                                         kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
 
                                     tradeState = TradeState.complete_trade
-                                    addLog("[TradeState - complete_trade]")
+                                    addLog("\n[TradeState - complete_trade]")
                                 else:
                                     print("매수 처리", targetCoin, krw * feePercent)
                             else:
@@ -447,31 +447,31 @@ def autoTradingLive():
                                     nextCoin()
                         else:       # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
                             tradeState = TradeState.complete_trade
-                            addLog("[TradeState - complete_trade]")
+                            addLog("\n[TradeState - complete_trade]")
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - complete_trade]")
+                        addLog("\n[TradeState - complete_trade]")
 
                 elif tradeState == TradeState.complete_trade:
                     # 구매여부 확인 로직
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
                     if unit > 0:
                         tradeState = TradeState.waiting
-                        addLog("[TradeState - waiting] " + str(targetCoin) + " : " + str(unit))
+                        addLog("\n[TradeState - waiting] " + str(targetCoin) + " : " + str(unit))
 
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         pass
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - selling]")
+                        addLog("\n[TradeState - selling]")
 
                 elif tradeState == TradeState.waiting:
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         pass
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - selling]")
+                        addLog("\n[TradeState - selling]")
 
                 elif tradeState == TradeState.selling:
                     # 3.3 매도 로직 - 명일 8:59:46 ~ 9:00:00
@@ -502,7 +502,7 @@ def autoTradingLive():
                                                                          targetCoin) + " - " + str(unit))
                         else:
                             tradeState = TradeState.complete_sell
-                            addLog("[TradeState - complete_sell]")
+                            addLog("\n[TradeState - complete_sell]")
                             addLog(
                                 "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매도 완료 - KRW : " + str(
                                     krw) + ", Coin Name :" + str(
@@ -513,12 +513,12 @@ def autoTradingLive():
 
                         if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
                             tradeState = TradeState.ready
-                            addLog("[TradeState - ready]")
+                            addLog("\n[TradeState - ready]")
 
                 elif tradeState == TradeState.complete_sell:
                     if now.strftime('%H:%M:%S') == "08:59:59" and now.strftime('%H:%M:%S') == "08:59:58":
                         tradeState = TradeState.ready
-                        addLog("[TradeState - ready]")
+                        addLog("\n[TradeState - ready]")
 
             except Exception as e:
                 print(e)
@@ -816,7 +816,7 @@ def autoTradingLive():
                                         kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
 
                                     tradeState = TradeState.complete_trade
-                                    addLog("[TradeState - complete_trade]")
+                                    addLog("\n[TradeState - complete_trade]")
                                 else:
                                     nextCoin()
                                     logOutput(now, krw, targetCoin, unit, target_price, current_price)
@@ -827,24 +827,24 @@ def autoTradingLive():
                                     nextCoin()
                         else:  # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
                             tradeState = TradeState.complete_trade
-                            addLog("[TradeState - complete_trade]")
+                            addLog("\n[TradeState - complete_trade]")
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - complete_trade]")
+                        addLog("\n[TradeState - complete_trade]")
 
                 elif tradeState == TradeState.complete_trade:
                     # 구매여부 확인 로직
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
                     if unit > 0:
                         tradeState = TradeState.drop_check
-                        addLog("[TradeState - drop_check] " + str(targetCoin) + " : " + str(unit))
+                        addLog("\n[TradeState - drop_check] " + str(targetCoin) + " : " + str(unit))
 
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         pass
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - drop_check]")
+                        addLog("\n[TradeState - drop_check]")
 
                 elif tradeState == TradeState.drop_check:
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
@@ -855,7 +855,7 @@ def autoTradingLive():
                             addLog(">> [{}] 하락장 체크 중 외부 매도 감지 !!! - coin : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin))
                             nextCoin()
                             tradeState = TradeState.ready
-                            addLog("[TradeState - ready]")
+                            addLog("\n[TradeState - ready]")
                         if max_price < current_price:  # 최고 가격을 갱신했다면
                             max_price = current_price
                             sell_price = max_price - target_price * targetSellPercent
@@ -878,7 +878,7 @@ def autoTradingLive():
                                         addLog(">> [{}] 하락 감지 매도 - KRW : {}, coin : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, max_price, buy_price,current_price, start_price, sell_price, target_price, round(currentRatio, 2), round(earinigRatio, 2), round(margin,2)))
                                         nextCoin()
                                         tradeState = TradeState.trading
-                                        addLog("[TradeState - trading]")
+                                        addLog("\n[TradeState - trading]")
 
                                         if isKakao:
                                             kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],
@@ -890,13 +890,13 @@ def autoTradingLive():
                                                                              round(earinigRatio, 2), round(margin, 2)))
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - selling]")
+                        addLog("\n[TradeState - selling]")
                 elif tradeState == TradeState.waiting:
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         pass
                     else:
                         tradeState = TradeState.selling
-                        addLog("[TradeState - selling]")
+                        addLog("\n[TradeState - selling]")
 
                 elif tradeState == TradeState.selling:
                     # 3.3 매도 로직 - 명일 8:59:46 ~ 9:00:00
@@ -924,17 +924,17 @@ def autoTradingLive():
                         else:
                             tradeState = TradeState.complete_sell
                             addLog(">> [{}] 매도 완료 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {} ".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
-                            addLog("[TradeState - complete_sell]")
+                            addLog("\n[TradeState - complete_sell]")
                         logOutput(now, krw, targetCoin, unit, target_price, current_price)
 
                         if now.strftime('%H:%M:%S') == "08:59:59" or now.strftime('%H:%M:%S') == "08:59:58":
                             tradeState = TradeState.ready
-                            addLog("[TradeState - ready]")
+                            addLog("\n[TradeState - ready]")
 
                 elif tradeState == TradeState.complete_sell:
                     if now.strftime('%H:%M:%S') == "08:59:59" or now.strftime('%H:%M:%S') == "08:59:58":
                         tradeState = TradeState.ready
-                        addLog("[TradeState - ready]")
+                        addLog("\n[TradeState - ready]")
 
             except Exception as e:
                 print(e)
@@ -942,6 +942,9 @@ def autoTradingLive():
     else:
         print("준비중")
         time.sleep(1)
+
+now = datetime.datetime.now()
+print("\n[{}] J1 Auto Bitcoin Start !!!!\n".format(now.strftime('%Y-%m-%d %H:%M:%S')))
 
 if isLive:
     autoTradingLive()
