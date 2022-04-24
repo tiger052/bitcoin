@@ -90,7 +90,9 @@ def get_current_price(ticker):
 def get_current_sell_price(ticker, depth):
     orderbook = pyupbit.get_orderbook(ticker)
     curPrice = orderbook[0]["orderbook_units"][0]["bid_price"]      # 조회 시점 depth의 매수가격이 판매가격 임 linux
-    gap = orderbook[0]["orderbook_units"][1]["ask_price"] - orderbook["orderbook_units"][0]["ask_price"]  # linux
+    secondPrice = orderbook[0]["orderbook_units"][1]["ask_price"]
+    firstPrice = orderbook["orderbook_units"][0]["ask_price"]  # linux
+    gap = secondPrice - firstPrice
     #curPrice = orderbook["orderbook_units"][0]["ask_price"]  # 조회 시점 depth의 매수가격이 판매가격 임 window
     #gap = orderbook["orderbook_units"][1]["ask_price"] - orderbook["orderbook_units"][0]["ask_price"]   #window
     sellPrice = curPrice - (gap * depth)
