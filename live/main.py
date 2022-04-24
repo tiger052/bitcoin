@@ -33,23 +33,29 @@ coinlist = []                                   # 거래할 코인 list (코인 
 buy_price = 0                                   # 매수 시 금액
 sell_price = 0                                  # 판매 하기 위한 금액
 max_price = 0                                   # 매수 후 최고 가격
-
+########################
 ## Trading Setting #####
+########################
+#-- 트레이드 셋팅
 trademode = TradeMode.break_out_range_and_asking_buy_down_sell           # 트레이드 모드 설정
 targetCoin = "KRW-XRP"                          # 트레이드 할 Coin
 tradeState = TradeState.initialize              # 트레이드 상태
 processState = ProcessState.complete            # 처리 상태
+
+#-- 트레이딩 수치값
 targetPercent = 0.5                             # 변동성 돌파 목표치 비율
 targetSellPercent = 0.01                        # 판매 목표 치 비율( target price 에 해당 비율의 곱)
 tradeVolumeMin = 5000                           # 최소 거래 값 - 5000원 이상
 AllowCoinPrice = 5000                           # 최소 코인 가격
 feePercent = 0.9995                             # 수수료 퍼센트
+tradeCheckTime = 0.2                            # 트레이드 모드시 해당 수치 마다 체크
 
 #-- 호가 비교 전략 정보
 priceComparisonsMax = 2                         # 호가 비교 횟수
 gravityDepth = 0.1                              # 호가 비교시 단계별 depth 값
 bid_buy_ratio = 5                               # 호가 매수 비율 (해당 비율이 넘을시 매수)
 isGravity = True                                # 호가 비교시 비중을 줄지 여부
+
 
 #-- 시스템설정
 isLive = True                                   # 실제 매수, 매도 여부
@@ -795,7 +801,7 @@ def autoTradingLive():
                     # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:45
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         if krw > tradeVolumeMin:  # 원화가 5000보다 크면
-
+                            print(">> [{}] 가격 비교 구문 coin : {}, 현재가 : {}, 목표가: {}, 가격 비격 결과 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin, round(current_price, 2),round(target_price, 2), target_price < current_price))
                             if target_price < current_price:  # 목표값 < 현재값
                                 if isAutoChangeCoin == True:
                                     if current_price > AllowCoinPrice:  # 허용 수치 보다 크다면
@@ -825,6 +831,9 @@ def autoTradingLive():
                             else:
                                 if isAutoChangeCoin == True:
                                     nextCoin()
+                                if not tradeCheckTime == 1:
+                                    time.sleep(tradeCheckTime)
+                                    continue
                         else:  # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
                             tradeState = TradeState.complete_trade
                             addLog("\n[TradeState - complete_trade]")
