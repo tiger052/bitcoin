@@ -44,11 +44,12 @@ processState = ProcessState.complete            # 처리 상태
 
 #-- 트레이딩 수치값
 targetPercent = 0.5                             # 변동성 돌파 목표치 비율
-targetSellPercent = 0.01                        # 판매 목표 치 비율( target price 에 해당 비율의 곱)
+targetSellPercent = 0.002                       # 판매 목표 치 비율( target price 에 해당 비율의 곱)
+targetSellDepth = 2                             # 2 dpeth 밑으로 떨어질때 매도 처리
 tradeVolumeMin = 5000                           # 최소 거래 값 - 5000원 이상
 AllowCoinPrice = 5000                           # 최소 코인 가격
 feePercent = 0.9995                             # 수수료 퍼센트
-tradeCheckTime = 0.2                            # 트레이드 모드시 해당 수치 마다 체크
+tradeCheckTime = 0.5                            # 트레이드 모드시 해당 초 마다 체크
 
 #-- 호가 비교 전략 정보
 priceComparisonsMax = 2                         # 호가 비교 횟수
@@ -180,10 +181,10 @@ def priceComparisons(ticker):
 
         # 매수 점수
         for data in compareList:
-            bid_price = data['bid_price']
-            bid_size = data['bid_size']
-            ask_price = data['ask_price']
-            ask_size = data['ask_size']
+            bid_price = data['bid_price']       # 매수 가격
+            bid_size = data['bid_size']         # 매수 양
+            ask_price = data['ask_price']       # 매도 각겨
+            ask_size = data['ask_size']         # 매도 양
             totalBid_point = (totalBid_point + bid_price * bid_size) * gravity
             totalAsk_point = (totalAsk_point + ask_price * ask_size) * gravity
             gravity = gravity - gravityDepth
@@ -193,7 +194,8 @@ def priceComparisons(ticker):
         if (resultRatio > bid_buy_ratio):
             result = True
         now = datetime.datetime.now()
-        print(">> [{}] 호가 비교 구문 coin : {}, 매수 : {}, 매도 : {}, ratio : {}, 매수 처리 결과 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), ticker, round(totalBid_point, 2), round(totalAsk_point, 2), resultRatio, result))
+        krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+        print(">> [{}] 호가 비교 구문 - KRW : {}, coin : {}, 매수 : {}, 매도 : {}, ratio : {}, 매수 처리 결과 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, ticker, round(totalBid_point, 2), round(totalAsk_point, 2), resultRatio, result))
 
     except Exception as e:
         print(e)
@@ -396,7 +398,7 @@ def autoTradingTest():
     """
 
 def autoTradingLive():
-    global tradeState, trademode, targetCoin, usedCoindic, processState, isAutoChangeCoin, targetSellPercent, buy_price, max_price, sell_price
+    global tradeState, trademode, targetCoin, usedCoindic, processState, isAutoChangeCoin, targetSellPercent, buy_price, max_price, sell_price, targetSellDepth
 
     # === 변동성 돌파 전략 ====
     if trademode == TradeMode.break_out_range:
@@ -801,7 +803,7 @@ def autoTradingLive():
                     # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:45
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         if krw > tradeVolumeMin:  # 원화가 5000보다 크면
-                            print(">> [{}] 가격 비교 구문 coin : {}, 현재가 : {}, 목표가: {}, 가격 비격 결과 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin, round(current_price, 2),round(target_price, 2), target_price < current_price))
+                            print(">> [{}] 가격 비교 구문 - KRW : {}, coin : {}, 현재가 : {}, 목표가: {}, 가격 비격 결과 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw,2), targetCoin, round(current_price, 2),round(target_price, 2), target_price < current_price))
                             if target_price < current_price:  # 목표값 < 현재값
                                 if isAutoChangeCoin == True:
                                     if current_price > AllowCoinPrice:  # 허용 수치 보다 크다면
@@ -817,9 +819,9 @@ def autoTradingLive():
                                     usedCoindic[targetCoin] = current_price  # 매수 dic에 저장
                                     buy_price = current_price  # 매수 가
                                     max_price = current_price
-                                    addLog(">> [{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
+                                    addLog(">> [{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw,2), targetCoin, unit, target_price, current_price))
                                     if isKakao:
-                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
+                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw,2), targetCoin, unit, target_price, current_price))
 
                                     tradeState = TradeState.complete_trade
                                     addLog("\n[TradeState - complete_trade]")
@@ -846,6 +848,8 @@ def autoTradingLive():
                     # 구매여부 확인 로직
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
                     if unit > 0:
+                        # sell_price = max_price - target_price * targetSellPercent
+                        sell_price = upbitControl.get_current_sell_price(targetCoin, targetSellDepth)
                         tradeState = TradeState.drop_check
                         addLog("\n[TradeState - drop_check] " + str(targetCoin) + " : " + str(unit))
 
@@ -857,7 +861,8 @@ def autoTradingLive():
 
                 elif tradeState == TradeState.drop_check:
                     unit = upbitControl.get_balance(upbitInst, targetCoin)  # 보유 코인
-                    sell_price = max_price - target_price * targetSellPercent
+                    krw = upbitControl.get_balance(upbitInst, "KRW")  # 원화 조회
+
                     current_price = upbitControl.get_current_price(targetCoin)  # 현재 값
                     if start_time < now < end_time - datetime.timedelta(seconds=15):
                         if unit == 0:       # 외부에서 강제 판매 한 상황
@@ -867,33 +872,35 @@ def autoTradingLive():
                             addLog("\n[TradeState - ready]")
                         if max_price < current_price:  # 최고 가격을 갱신했다면
                             max_price = current_price
-                            sell_price = max_price - target_price * targetSellPercent
+                            #sell_price = max_price - target_price * targetSellPercent
+                            sell_price = upbitControl.get_current_sell_price(targetCoin, targetSellDepth)
                         if buy_price == 0:
                             buy_price = current_price - current_price * 0.01
                         start_price = upbitControl.get_start_price(targetCoin)
                         currentRatio = (current_price / start_price - 1) * 100
                         earinigRatio = (current_price / buy_price - 1) * 100
+                        totalKRW = krw + (current_price * unit)
                         margin = current_price - buy_price
-                        print(">> [{}] 하락장 체크 구문 -  coin : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin, max_price, buy_price, current_price, start_price, sell_price, target_price, round(currentRatio, 2), round(earinigRatio, 2), round(margin,2)))
-                        if current_price < sell_price:  # 판매 공식 : 현재가가 최고가 - 갭 수치 이하로 내려갈때 매도
+                        print(">> [{}] 현재 상태 체크 구문 -  coin : {}, 총평가 : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin, round(totalKRW,2), max_price, buy_price, current_price, start_price, sell_price, target_price, round(currentRatio, 2), round(earinigRatio, 2), round(margin,2)))
+                        if current_price <= sell_price:  # 판매 공식 : 현재가가 최고가 - 갭 수치 이하로 내려갈때 매도
                             if len(usedCoindic) > 0:
                                 for coin in usedCoindic:
                                     current_price = upbitControl.get_current_price(coin)  # 현재 값
-                                    unit = upbitControl.get_balance(upbitInst, coin)  # 보유 코인
+                                    current_unit = upbitControl.get_balance(upbitInst, coin)  # 보유 코인
                                     if current_price * unit > 5000:
-                                        upbitInst.sell_market_order(coin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
+                                        upbitInst.sell_market_order(coin, current_unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
                                         usedCoindic.pop(coin)
-
-                                        addLog(">> [{}] 하락 감지 매도 - KRW : {}, coin : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, max_price, buy_price,current_price, start_price, sell_price, target_price, round(currentRatio, 2), round(earinigRatio, 2), round(margin,2)))
+                                        totKRW = krw + (current_price * current_unit)
+                                        addLog(">> [{}] 하락 감지 매도 - coin : {}, 총평가 : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), targetCoin, round(totKRW,2),  max_price, buy_price,current_price, start_price, sell_price, target_price, round(currentRatio, 2), round(earinigRatio, 2), round(margin,2)))
                                         nextCoin()
                                         tradeState = TradeState.trading
                                         addLog("\n[TradeState - trading]")
 
                                         if isKakao:
                                             kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],
-                                                                         "[{}] 하락 감지 매도 - KRW : {}, coin : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(
-                                                                             now.strftime('%Y-%m-%d %H:%M:%S'), krw,
-                                                                             targetCoin, max_price, buy_price,
+                                                                         "[{}] 하락 감지 매도 - coin : {}, 총평가 : {}, 최고가 : {}, 구매가 : {}, 현재가 : {}, 시가 : {}, 판매 목표가 : {}, 구입 목표가 : {}, 진행된 비율 : {}, 수익율 : {}, 마진 : {}".format(
+                                                                             now.strftime('%Y-%m-%d %H:%M:%S'),
+                                                                             targetCoin, round(totKRW,2), max_price, buy_price,
                                                                              current_price, start_price, sell_price,
                                                                              target_price, round(currentRatio, 2),
                                                                              round(earinigRatio, 2), round(margin, 2)))

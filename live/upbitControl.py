@@ -85,6 +85,18 @@ def get_current_price(ticker):
     #return orderbook["orderbook_units"][0]["ask_price"]  # get_orderbook 은 매도 매수가 리스트를 반환한다. window
 
 #----------------------------------------------#
+# 판매가 조회 - ticker : 코인
+#----------------------------------------------#
+def get_current_sell_price(ticker, depth):
+    orderbook = pyupbit.get_orderbook(ticker)
+    curPrice = orderbook[0]["orderbook_units"][0]["bid_price"]      # 조회 시점 depth의 매수가격이 판매가격 임 linux
+    gap = orderbook[0]["orderbook_units"][1]["ask_price"] - orderbook["orderbook_units"][0]["ask_price"]  # linux
+    #curPrice = orderbook["orderbook_units"][0]["ask_price"]  # 조회 시점 depth의 매수가격이 판매가격 임 window
+    #gap = orderbook["orderbook_units"][1]["ask_price"] - orderbook["orderbook_units"][0]["ask_price"]   #window
+    sellPrice = curPrice - (gap * depth)
+    return sellPrice
+
+#----------------------------------------------#
 # 호가 정보 조회 - ticker : 코인
 #----------------------------------------------#
 def get_current_orderbook(ticker):
@@ -140,3 +152,10 @@ print("10 MIN : {} ".format(get_candle("KRW-BTC", 10, 10)))
 #result = get_start_time("KRW-BTC")
 #result =  get_target_price("KRW-BTC", 0.8)
 #print(result)
+"""
+print(get_current_orderbook("KRW-WEMIX"))
+print(get_current_sell_price("KRW-WEMIX",0))
+print(get_current_sell_price("KRW-WEMIX",1))
+print(get_current_sell_price("KRW-WEMIX",2))
+print(get_current_sell_price("KRW-WEMIX",3))
+"""
