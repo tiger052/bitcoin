@@ -962,7 +962,10 @@ def autoTradingLive():
 now = datetime.datetime.now()
 print("\n[{}] J1 Auto Bitcoin Start !!!!\n".format(now.strftime('%Y-%m-%d %H:%M:%S')))
 
-if isLive:
-    autoTradingLive()
+#if isLive:
+ #   autoTradingLive()
 #else:
  #   autoTradingTest()
+print(upbitControl.get_current_orderbook("KRW-WEMIX"))
+print(upbitControl.get_current_sell_price("KRW-WEMIX",0))
+print(upbitControl.get_current_sell_price("KRW-WEMIX",1))
