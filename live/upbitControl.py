@@ -5,6 +5,7 @@
 import os.path
 import json
 import pyupbit
+import requests
 
 upbit_path = "../live/upbit_setting.json"           # 토큰 파일 경로
 
@@ -44,6 +45,19 @@ def get_target_price(ticker, k):                # ticker : 어떤 코인인지 ,
 def get_start_price(ticker):                # ticker : 어떤 코인인지
     df = pyupbit.get_ohlcv(ticker, interval="day", count=2)
     return df.iloc[0]['close']
+
+#----------------------------------------------#
+# 캔들 조회 (coin, type)
+#----------------------------------------------#
+def get_candle(ticker, min, count):                # ticker : 어떤 코인인지 , 캔들 조회 min( 1, 3, 5, 15, 10, 30, )
+
+    url = "https://api.upbit.com/v1/candles/minutes/{}?market={}&count={}".format(min,ticker, count)
+
+    headers = {"Accept": "application/json"}
+
+    response = requests.get(url, headers=headers)
+
+    return response.text
 
 
 #----------------------------------------------#
@@ -113,8 +127,16 @@ def sell_crypto_currency(upbit, ticker):
     upbit.sell_market_order(ticker, unit)         # 전량 매도 처리
 
 
-
-#instance = create_instance()
+# print(get_candle("KRW-BTC", 1, 10))
+# print(get_candle("KRW-BTC", 3, 10))
+# print(get_candle("KRW-BTC", 5, 10))
+# print(get_candle("KRW-BTC", 10, 10))
+"""
+print("3 MIN : {} ".format(get_candle("KRW-BTC", 3, 10)))
+print("5 MIN : {} ".format(get_candle("KRW-BTC", 5, 10)))
+print("10 MIN : {} ".format(get_candle("KRW-BTC", 10, 10)))
+"""
+5#instance = create_instance()
 #result = get_start_time("KRW-BTC")
 #result =  get_target_price("KRW-BTC", 0.8)
 #print(result)

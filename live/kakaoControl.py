@@ -23,7 +23,7 @@ def initKakao():
     if isSetupFile:
         with open(setting_path, 'r') as file:
             dic_apiData = json.load(file)
-            print(dic_apiData)
+            print(">> {}".format(dic_apiData))
     else:
         print("Cant load file. -> kakao_setting.json.")
         return
@@ -32,7 +32,7 @@ def initKakao():
     isTokenFile = os.path.isfile(token_path)
     if isTokenFile:
         dic_tokenData = getToken()
-        print(dic_tokenData)
+        print(">> {}".format(dic_tokenData))
     else:
         print("Cant load file 'kakao_token.json.' -> request Token()")
         requestToken()
@@ -66,7 +66,7 @@ def requestToken():
     # 3.response 처리
     if response.status_code == 200:                                # 200 성공 시 처리
         token_data = response.json()
-        print("<request Token> : ", token_data)
+        print(">> request Token : {}".format(token_data))
 
         if 'access_token' in token_data:  # 성공 처리
             # 4.token 정보 저장
@@ -96,7 +96,7 @@ def refreshToken():
     # 3.response 처리
     if response.status_code == 200:
         new_token = response.json()
-        print("<refrash Token> : ", new_token)
+        print(">> refrash Token : {}".format(new_token))
         dic_tokenData['access_token'] = new_token['access_token']
         with open(r"" + token_path, "w") as fp:
             json.dump(dic_tokenData, fp)
@@ -126,7 +126,7 @@ def getFriendsList():
         for friend in friends_list:
             friends_id.append(str(friend.get("uuid")))
 
-        print(friends_list)
+        print(">> friends_list : {}".format(friends_list))
     else:
         print("[ERROR] getFriendsList : " + str(response.status_code) + ", " + response.text)
         return
@@ -154,7 +154,7 @@ def sendToMeMessage(uuid, text):
     response = requests.post(url, headers=header, data=data)
 
     if response.status_code == 200:
-        print("<send To Message> : ", response.json())
+        print(">> send To Message : {}".format(response.json()))
         pass
     else:
         print("[ERROR] sendToMeMessage : " + str(response.status_code) + ", " + response.text)
