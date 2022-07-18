@@ -1,10 +1,9 @@
-import pyupbit
 import datetime
 import time
 import kakaoControl
 import upbitControl
 from enum import Enum
-import os.path
+
 
 class TradeState(Enum):
     initialize = "init"                         # 초기화 단계 : Ticer 정보 및 현재 Coin 상태를 설정 및 초기화 한다.
@@ -98,7 +97,7 @@ def reset():
 
 # Log 저장 로직
 def sendLogMessage():
-    path = "../live/output.log"
+    path = "/output.log"
     try:
         with open(path, 'r') as file:
             doc = file.read()
@@ -111,7 +110,7 @@ def sendLogMessage():
         print(e)
 
 def readLog():
-    path = "../live/output.log"
+    path = "/output.log"
     try:
         with open(path, 'r') as file:
             doc = file.read()
@@ -123,7 +122,7 @@ def readLog():
 
 # Log 추가 로직
 def addLog(text):
-    path = "../live/output.log"
+    path = "/output.log"
     try:
         txt = readLog()
         with open(path, 'w') as file:
@@ -214,7 +213,7 @@ def logOutput(now, krw, targetCoin, unit, target_price, current_price):
     # 3.5 정시 정기 보고
     if now.strftime('%M') == '00' and now.strftime('%S') == '00':
         if isKakao:
-            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[{}] 하루 마감 보고 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}\n----------".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
+            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], "[{}] 하루 마감 보고 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}\n----------".format(now.strftime('%Y-%m-%d %H:%M:%S'), krw, targetCoin, unit, target_price, current_price))
 
 def autoTradingTest():
     global tradeState, targetCoin, curCoinIdx, AllowCoinPrice, tickerlist, usedCoindic
@@ -444,7 +443,7 @@ def autoTradingLive():
                                             targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
                                             target_price) + ", Current Price : " + str(current_price))
                                     if isKakao:
-                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
+                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(targetCoin) + " - " + str(5000 * feePercent))
 
                                     tradeState = TradeState.complete_trade
                                     addLog("\n[TradeState - complete_trade]")
@@ -713,7 +712,7 @@ def autoTradingLive():
                                         addLog(
                                             "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 하락 감지 매도 - KRW : " + str(krw) + ", Coin :" + str(targetCoin) + ", 최고가 :" + str(max_price) + ", 구매가 :" + str(buy_price) + ", 현재가 :" + str(current_price) + ", 시가 :" + str(start_price) + ", 판매 목표가 :" + str(sell_price) + ", 목표가 :" + str(target_price) + ", 진행률 :  " + str(round(currentRatio,2)) + ",  수익률 : " + str(round(earinigRatio,2)))
                                         if isKakao:
-                                            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 하락 감지 매도!!!\n" + str(targetCoin) + " - " + str(unit))
+                                            kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], "[" + now.strftime('%Y-%m-%d %H:%M:%S') + "] 하락 감지 매도!!!\n" + str(targetCoin) + " - " + str(unit))
                             nextCoin()
                             tradeState = TradeState.trading
                             addLog("[TradeState - trading]")
@@ -821,7 +820,7 @@ def autoTradingLive():
                                     max_price = current_price
                                     addLog(">> [{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw,2), targetCoin, unit, target_price, current_price))
                                     if isKakao:
-                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'],"[{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw,2), targetCoin, unit, target_price, current_price))
+                                        kakaoControl.sendToMeMessage(kakaoControl.dic_apiData['frind_uuid'], "[{}] 매수 - KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), round(krw, 2), targetCoin, unit, target_price, current_price))
 
                                     tradeState = TradeState.complete_trade
                                     addLog("\n[TradeState - complete_trade]")

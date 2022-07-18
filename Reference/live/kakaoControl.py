@@ -9,8 +9,8 @@ import time
 
 dic_apiData = {}                    # api 관련 Data
 dic_tokenData = {}                  # token 관련 Data
-setting_path = "../live/kakao_setting.json"       # 설정 파일 경로
-token_path = "../live/kakao_token.json"           # 토큰 파일 경로
+setting_path = "kakao_setting.json"  # 설정 파일 경로
+token_path = "/kakao_token.json"  # 토큰 파일 경로
 
 #------------------------#
 # kakao Api Module 초기화
