@@ -3,12 +3,13 @@ from api.upbit import *
 import datetime
 import sys
 import os
-from PyQt5.QtCore import *
+#from PyQt5.QtCore import *
 import traceback
+import threading
 
-class BreakOutRange(QThread):
+class BreakOutRange(threading.Thread):
     def __init__(self):
-        QThread.__init__(self)
+        threading.Thread.__init__(self)
         self.strategy_name = "break_out_range"
         self.upbit = create_instance()
 
@@ -146,7 +147,7 @@ class BreakOutRange(QThread):
         """실질적 수행 역할을 하는 함수"""
         while self.is_init_success:
             try:
-
+                print("1")
                 pass
 
                 '''
