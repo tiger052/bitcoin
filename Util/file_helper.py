@@ -1,7 +1,7 @@
 from Util.const import *
 
 def createLog():
-    path = logFileName
+    path = "Log/output.log"
     try:
         with open(path, 'w') as file:
             file.write("")
@@ -10,7 +10,7 @@ def createLog():
 
 
 def clearLog():
-    path = logFileName
+    path = "Log/output.log"
     try:
         txt = loadLog()
         with open(path, 'w') as file:
@@ -19,12 +19,14 @@ def clearLog():
         print(e)
 
 def saveLog(text):
-    path = logFileName
+    path = "Log/output.log"
     try:
         txt = loadLog()
         if txt is None:
-            print("none")
-            pass
+            print("File is None! - Create Log File")
+            createLog()
+            return
+        print(text)
         if len(txt) == 0:
             with open(path, 'w') as file:
                 file.write("{}".format(text))
@@ -36,7 +38,7 @@ def saveLog(text):
         print(e)
 
 def loadLog():
-    path = logFileName
+    path = "Log/output.log"
     try:
         with open(path, 'r') as file:
             doc = file.read()
@@ -51,5 +53,5 @@ if __name__ == "__main__":
     #clearLog()
     saveLog("test")
     data = loadLog()
-    print(len(data))
+    #print(len(data))
     pass

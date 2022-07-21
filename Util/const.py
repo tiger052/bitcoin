@@ -17,7 +17,6 @@ class TradeMode(Enum):
 
 #===== Config Info =====#
 snsType = SNSType.Telegram
-logFileName = "../Log/output.log"
 
 #=====SNS Info=====#
 #1.Line Token - J1 Stock

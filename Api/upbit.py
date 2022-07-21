@@ -7,7 +7,7 @@ import json
 import pyupbit
 import requests
 
-upbit_path = "upbit_setting.json"  # 토큰 파일 경로
+upbit_path = "Api/upbit_setting.json"  # 토큰 파일 경로
 
 isWindow = True  # 실행 환경 에따른 분기 처리
 # ------------------------#

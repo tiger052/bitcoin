@@ -1,5 +1,5 @@
 import requests
-from const import *
+from Util.const import *
 
 def send_message(mes):
     if snsType == SNSType.Line:
