@@ -7,7 +7,7 @@ import os.path
 import json
 import time
 
-dic_apiData = {}                    # api 관련 Data
+dic_apiData = {}                    # Api 관련 Data
 dic_tokenData = {}                  # token 관련 Data
 setting_path = "kakao_setting.json"  # 설정 파일 경로
 token_path = "/kakao_token.json"  # 토큰 파일 경로
@@ -88,7 +88,7 @@ def refreshToken():
 
     data = {
         "grant_type": "refresh_token",                   # 얘는 단순 String임. "refresh_token"
-        "client_id": f"{dic_apiData['rest_api_key']}",   # rest api key
+        "client_id": f"{dic_apiData['rest_api_key']}",   # rest Api key
         "refresh_token": dic_tokenData['refresh_token']  # 여기가 위에서 얻은 refresh_token 값
     }
     # 2.request 처리
@@ -137,7 +137,7 @@ def getFriendsList():
 def sendToMeMessage(uuid, text):
     # 1.send To Message Data 설정
     header = {"Authorization": 'Bearer ' + dic_tokenData['access_token']}
-    url = "https://kapi.kakao.com/v1/api/talk/friends/message/default/send"  # api 주소
+    url = "https://kapi.kakao.com/v1/api/talk/friends/message/default/send"  # Api 주소
     data = {
         'receiver_uuids': '["{}"]'.format(uuid),
         "template_object": json.dumps({

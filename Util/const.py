@@ -4,16 +4,6 @@ class SNSType(Enum):
     Line = 0,
     Telegram = 1
 
-class TradeState(Enum):
-    initialize = "init"                         # 초기화 단계 : Ticer 정보 및 현재 Coin 상태를 설정 및 초기화 한다.
-    ready = "ready"                             # 준비 단계 : 매수 전 데이터를 수집하는 단계 (변동성 + 하락 + 효율 )
-    trading = "trading"                         # 트레이딩 단계 : 매수를 시도하는 단계
-    complete_trade = "complete_trade"           # 트레이드 한 상태 : 매수 처리가 완료된 상태 (변동성)
-    drop_check = "drop_check"                   # 하락 체크 상태 : 매수한 코인이 하락 하는지 체크 (변동성 + 하락)
-    selling = "selling"                         # 매도 상태 : 매도를 시도하는 단계
-    complete_sell = "complete_sell"             # 매도 된 상태 : 매도 처리가 완료된 상태
-    waiting = "waiting"                         # 대기 중
-
 class ProcessState(Enum):
     processing = "processing"                   # 처리중
     complete = "waiting"                        # 완료
@@ -27,6 +17,7 @@ class TradeMode(Enum):
 
 #===== Config Info =====#
 snsType = SNSType.Telegram
+logFileName = "../Log/output.log"
 
 #=====SNS Info=====#
 #1.Line Token - J1 Stock
