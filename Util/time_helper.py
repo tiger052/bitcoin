@@ -25,6 +25,11 @@ def check_one_minute_time():
     now = datetime.now()
     return now.strftime('%S') == '00'
 
+def check_thirty_minute_time():
+    """30분 단위인지 체크 """
+    now = datetime.now()
+    return now.strftime('%M') == '30' and now.strftime('%S') == '00'
+
 def check_on_time():
     """정시 체크"""
     now = datetime.now()

@@ -1,4 +1,5 @@
 from Util.const import *
+from Util.notifier import *
 
 def createLog():
     path = "Log/output.log"
@@ -7,7 +8,7 @@ def createLog():
             file.write("")
     except Exception as e:
         print(e)
-
+        send_message("createLog : {}".format(e))
 
 def clearLog():
     path = "Log/output.log"
@@ -17,6 +18,7 @@ def clearLog():
             file.write("")
     except Exception as e:
         print(e)
+        send_message("clearLog : {}".format(e))
 
 def saveLog(text):
     path = "Log/output.log"
@@ -36,6 +38,7 @@ def saveLog(text):
 
     except Exception as e:
         print(e)
+        send_message("saveLog : {}".format(e))
 
 def loadLog():
     path = "Log/output.log"
@@ -45,6 +48,7 @@ def loadLog():
             return doc
     except Exception as e:
         print(e)
+        send_message("loadLog : {}".format(e))
         return None
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ class BreakOutRange(threading.Thread):
     def __init__(self):
 
         threading.Thread.__init__(self)
-        print("Break Rimoger")
+
         self.strategy_name = "break_out_range"
         self.upbitInst = create_instance()
 
@@ -63,38 +63,20 @@ class BreakOutRange(threading.Thread):
         self.buy_price = 0  # 매수 시 금액
         self.sell_price = 0  # 판매 하기 위한 금액
         self.max_price = 0  # 매수 후 최고 가격
+
+        saveLog("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
+        send_message("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
+        saveLog("\n[TradeState - initialize]")
         self.init_strategy()
 
+    # 전략 초기화 기능을 수행하는 함수
     def init_strategy(self):
-        """전략 초기화 기능을 수행하는 함수"""
-
         try:
-            print("init_strategy")
-
-            ''''# 유니버스 조회, 없으면 생성
-            self.check_and_get_universe()
-
-            # 가격 정보를 조회, 필요하면 생성
-            self.check_and_get_price_data()
-
-            # Kiwoom > 주문정보 확인
-            self.kiwoom.get_order()
-
-            # Kiwoom > 잔고 확인
-            self.kiwoom.get_balance()
-
-            # Kiwoom > 예수금 확인
-            self.deposit = self.kiwoom.get_deposit()
-
-            # 유니버스 실시간 체결정보 등록
-            self.set_universe_real_time()
-            '''
-            saveLog("[TradeState - ready]")
+            saveLog(">> 초기화 완료.\n\n[TradeState - ready]")
             self.tradeState = TradeState.ready
         except Exception as e:
             print(traceback.format_exc())
-            # LINE 메시지를 보내는 부분
-            #send_message(traceback.format_exc(), RSI_STRATEGY_MESSAGE_TOKEN)
+            send_message(traceback.format_exc())
 
     def reset_strategy(self):
         self.processState = ProcessState.processing
@@ -109,7 +91,7 @@ class BreakOutRange(threading.Thread):
 
         self.processState = ProcessState.complete
         self.tradeState = TradeState.trading
-        saveLog("[TradeState - Trading]")
+        saveLog(">> 전략 준비 완료.\n\n[TradeState - Trading]")
 
     def checkCoinInfo(self):
         print("====Check Coin Info Start!====")
@@ -137,7 +119,7 @@ class BreakOutRange(threading.Thread):
             self.curCoinIdx = 0
         self.targetCoin = self.coinlist[self.curCoinIdx]
 
-    def report_transaction_info(self,text):
+    def report_transaction_info(self, text):
         # 3.4 Log 저장 로직
         now = datetime.now()
         if check_one_minute_time():  # 분당 저장
@@ -185,52 +167,43 @@ class BreakOutRange(threading.Thread):
                                 self.upbitInst.buy_market_order(self.targetCoin,
                                                            krw * self.feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
                                 self.usedCoindic[self.targetCoin] = current_price  # 매수 dic에 저장
-                                saveLog(
-                                    "[" + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "] 매수 - KRW : " + str(
-                                        krw) + ", Coin Name :" + str(
-                                        self.targetCoin) + ", Unit : " + str(
-                                        unit) + ", Target Price : " + str(
-                                        target_price) + ", Current Price : " + str(current_price))
-                                send_message("[" + datetime.now().strftime(
-                                                                     '%Y-%m-%d %H:%M:%S') + "] 매수!!!\n" + str(
-                                                                     self.targetCoin) + " - " + str(
-                                                                     5000 * self.feePercent))
+                                saveLog(">>[{}] 매수 - KRW :{}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw,self.targetCoin, unit, target_price, current_price))
+                                send_message("[{}] 매수!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.targetCoin, 5000 * self.feePercent))
 
                                 self.tradeState = TradeState.complete_trade
-                                saveLog("[TradeState - complete_trade]")
+                                saveLog(">>Buy Complete\n\n[TradeState - complete_trade]")
                             else:
                                 if self.isAutoChangeCoin == True:
                                     self.next_coin()
                         else:  # 원화가 없으면 매수 모드에서는 아무것도 처리하지 않는다.
                             self.tradeState = TradeState.complete_trade
-                            saveLog("[TradeState - complete_trade]")
+                            saveLog(">>원화 부족 : {}\n\n[TradeState - complete_trade]".format(krw))
 
-                        self.report_transaction_info(
-                            "STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(
-                                self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
+                        self.report_transaction_info("STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
                     else:
                         self.tradeState = TradeState.selling
-                        saveLog("[TradeState - complete_trade]")
+                        saveLog(">>거래 시간 종료 : {}\n\n[TradeState - complete_trade]".format(datetime.now()))
 
                 elif self.tradeState == TradeState.complete_trade:
-                    # 구매여부 확인 로직
+                    # 구매 여부 확인 로직
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
                     if unit > 0:
-                        self.tradeState = TradeState.waiting
-                        saveLog("[TradeState - waiting] " + str(self.targetCoin) + " : " + str(unit))
+                        saveLog(">>해당 코인 보유 중 . coin :{} , unit : {}\n\n[TradeState - waiting]".format(self.targetCoin, unit))
 
-                    if check_transaction_open():
-                        pass
-                    else:
-                        self.tradeState = TradeState.selling
-                        saveLog("[TradeState - selling]")
+                    self.tradeState = TradeState.waiting
+                    saveLog(">>전략 특성상 트래이드 대기 처리 : {}\n\n[TradeState - waiting]".format(datetime.now()))
 
                 elif self.tradeState == TradeState.waiting:
+                    target_price = get_target_price(self.targetCoin, self.targetPercent)  # 목표값 설정
+                    current_price = get_current_price(self.targetCoin)  # 현재 값
+                    krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
+                    unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
+
                     if check_transaction_open():
-                        pass
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.targetCoin, unit, target_price, current_price))
                     else:
                         self.tradeState = TradeState.selling
-                        saveLog("[TradeState - selling]")
+                        saveLog(">>거래 시간 종료 : {}\n\n[TradeState - selling]".format(datetime.now()))
 
                 elif self.tradeState == TradeState.selling:
                     # 3.3 매도 로직 - 명일 8:59:46 ~ 9:00:00
@@ -249,39 +222,23 @@ class BreakOutRange(threading.Thread):
                                 if current_price * unit > 5000:
                                     self.upbitInst.sell_market_order(coin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
                                     self.usedCoindic.pop(coin)
-                                    saveLog(
-                                        "[" + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "] 매도 - KRW : " + str(
-                                            krw) + ", Coin Name :" + str(
-                                            self.targetCoin) + ", Unit : " + str(
-                                            unit) + ", Target Price : " + str(
-                                            target_price) + ", Current Price : " + str(current_price))
-                                    send_message("[" + datetime.now().strftime(
-                                                                         '%Y-%m-%d %H:%M:%S') + "] 매도!!!\n" + str(
-                                                                         self.targetCoin) + " - " + str(unit))
+                                    saveLog("[{}] 매도 - KRW : {}, Coin Name :{}, Unit : {}, Target Price : {}, Current Price : {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw, self.targetCoin, unit, target_price, current_price))
+                                    send_message("[{}] 매도!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),self.targetCoin, unit))
                         else:
                             self.tradeState = TradeState.complete_sell
-                            saveLog("[TradeState - complete_sell]")
-                            saveLog(
-                                "[" + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "] 매도 완료 - KRW : " + str(
-                                    krw) + ", Coin Name :" + str(
-                                    self.targetCoin) + ", Unit : " + str(unit) + ", Target Price : " + str(
-                                    target_price) + ", Current Price : " + str(current_price))
+                            saveLog(">>거래 완료. 남은 코인 없음\n\n[TradeState - complete_sell]")
+                            saveLog("[{}]  매도 완료 - KRW : {}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), krw, self.targetCoin, unit, target_price, current_price))
 
                         self.report_transaction_info(
                             "STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(
                                 self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
 
-                        if check_transaction_open() == True:
-                            self.tradeState = TradeState.ready
-                            saveLog("[TradeState - ready]")
-
                 elif self.tradeState == TradeState.complete_sell:
-                    if check_transaction_open() == True:
+                    if check_transaction_open():
                         self.tradeState = TradeState.ready
-                        saveLog("[TradeState - ready]")
+                        saveLog(">>거래 가능 시간\n\n[TradeState - ready]")
 
             except Exception as e:
                 print(traceback.format_exc())
-                # LINE 메시지를 보내는 부분
-                # send_message(traceback.format_exc(), RSI_STRATEGY_MESSAGE_TOKEN)
+                send_message(traceback.format_exc())
                 pass
