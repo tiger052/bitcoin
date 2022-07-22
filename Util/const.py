@@ -18,6 +18,9 @@ class TradeMode(Enum):
 #===== Config Info =====#
 snsType = SNSType.Telegram
 
+#=====Upbit Info=====#
+UPBIT_OPEN_API_SERVER_URL = "https://api.upbit.com"
+
 #=====SNS Info=====#
 #1.Line Token - J1 Stock
 LINE_API_TOKEN = "6WCqsYSHGmv6YO7DTd2bk16uXaVdXCvEUdNsEddqMyf"

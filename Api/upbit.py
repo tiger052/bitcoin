@@ -6,19 +6,29 @@ import os.path
 import json
 import pyupbit
 import requests
+import uuid
+import jwt
+from Util.const import *
+from urllib.parse import urlencode, unquote
 
 upbit_path = "Api/upbit_setting.json"  # 토큰 파일 경로
 
 isWindow = True  # 실행 환경 에따른 분기 처리
+upbit_assess = ''
+upbit_secret = ''
+
 # ------------------------#
 # PyUpbit 모듈 생성
 # ------------------------#
 def create_instance():
+    global upbit_secret, upbit_assess
     isUpbitFile = os.path.isfile(upbit_path)
     if isUpbitFile:
         with open(upbit_path, 'r') as file:
             dic_upbit = json.load(file)
         inst = pyupbit.Upbit(dic_upbit['upbit_access'], dic_upbit['upbit_secret'])
+        upbit_assess = dic_upbit['upbit_access']
+        upbit_secret = dic_upbit['upbit_secret']
         return inst
     else:
         print("Cant load file 'upbit_setting.json.'")
@@ -131,6 +141,25 @@ def get_yesterday_ma5(ticker):
     ma = close.rolling(window=5).mean()  # 5 일 이동 평균을 계산하고 반환
     return ma[-2]  # 전일 기준 5일 평균값
 
+#-----------------------------------------------------------------------------------------
+# ----------------------------------------------#
+# 자산 - 전체 계좌 조회 : https://api.upbit.com/v1/accounts
+# ----------------------------------------------#
+def get_account():
+    global upbit_secret, upbit_assess
+    server_url = UPBIT_OPEN_API_SERVER_URL
+
+    payload = {
+        'access_key': upbit_assess,
+        'nonce': str(uuid.uuid4()),
+    }
+    jwt_token = jwt.encode(payload, upbit_secret)
+    authorization = 'Bearer {}'.format(jwt_token)
+    headers = {
+        'Authorization': authorization,
+    }
+    res = requests.get(server_url + '/v1/accounts', params="", headers=headers)
+    return res.json()
 
 # ----------------------------------------------#
 # 보유 금액 조회
@@ -169,7 +198,11 @@ if __name__ == "__main__":
     print("5 MIN : {} ".format(get_candle("KRW-BTC", 5, 10)))
     print("10 MIN : {} ".format(get_candle("KRW-BTC", 10, 10)))
     """
-    5  # instance = create_instance()
+    #instance = create_instance()
+    #account = get_account()
+    #jsonString = json.dumps(account)
+    #print(jsonString)
+
     # result = get_start_time("KRW-BTC")
     # result =  get_target_price("KRW-BTC", 0.8)
     # print(result)

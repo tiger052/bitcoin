@@ -32,7 +32,7 @@ class BreakOutRange(threading.Thread):
         self.upbitInst = create_instance()
 
         # -- 트레이드 셋팅
-        self.targetCoin = "KRW-XRP"  # 트레이드 할 Coin
+        self.targetCoin = ""  # 트레이드 할 Coin
         self.tradeState = TradeState.initialize  # 트레이드 상태
         self.processState = ProcessState.complete  # 처리 상태
 
@@ -72,6 +72,8 @@ class BreakOutRange(threading.Thread):
     # 전략 초기화 기능을 수행하는 함수
     def init_strategy(self):
         try:
+            self.setAccountInfo()
+
             saveLog(">> 초기화 완료.\n\n[TradeState - ready]")
             self.tradeState = TradeState.ready
         except Exception as e:
@@ -83,17 +85,26 @@ class BreakOutRange(threading.Thread):
 
         self.curCoinIdx = 0  # 현재 코인의 Index
         self.sell_price = 0  # 매수 가
-        self.tickerlist.clear()
         self.coinlist.clear()
         self.usedCoindic.clear()
-
-        self.checkCoinInfo()
+        self.makeCoinInfo()
 
         self.processState = ProcessState.complete
         self.tradeState = TradeState.trading
         saveLog(">> 전략 준비 완료.\n\n[TradeState - Trading]")
 
-    def checkCoinInfo(self):
+    def setAccountInfo(self):
+        print("====setAccount!====")
+        accountInfo = get_account()
+        print(accountInfo)
+        for data in accountInfo:
+            if data['currency'] == 'BTC' or data['currency'] == 'KRW':
+                continue
+            coinKey = "{}-{}".format(data['unit_currency'],data['currency'])
+            self.usedCoindic[coinKey] = data['balance']
+            self.targetCoin = coinKey
+
+    def makeCoinInfo(self):
         print("====Check Coin Info Start!====")
         self.tickerlist = list(get_ticker())  # ticker 리스터 획득
         print(">> ticker list - {}, {}".format(len(self.tickerlist), self.tickerlist))
@@ -105,9 +116,13 @@ class BreakOutRange(threading.Thread):
             if balance > 0:
                 if curprice * balance > 5000:
                     self.usedCoindic[ticker] = balance
-                    self.targetCoin = ticker
+
             if 1 < curprice < 5000:  # 소수점 이하 coin 은 배제한다
                 self.coinlist.append(ticker)
+
+        if self.targetCoin is "":
+            self.targetCoin = self.coinlist[0]
+
         print(">> used coin dic - size : {}, dic : {} ".format(len(self.usedCoindic), self.usedCoindic))
         print(">> real coin list - size : {}, list : {}".format(len(self.coinlist), self.coinlist))
         print(">> current Target Coin - {}".format(self.targetCoin))
