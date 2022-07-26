@@ -1,6 +1,6 @@
-#################
-# 변동성 돌파 전략 #
-##################
+######################
+#    변동성 돌파 전략   #
+######################
 from Util.notifier import *
 from Api.upbit import *
 from Util.time_helper import *
@@ -88,6 +88,7 @@ class BreakOutRange(threading.Thread):
         self.coinlist.clear()
         self.usedCoindic.clear()
         self.makeCoinInfo()
+        init_time_info()
 
         self.processState = ProcessState.complete
         self.tradeState = TradeState.trading
