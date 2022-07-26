@@ -1,6 +1,8 @@
 ######################
 #    변동성 돌파 전략   #
 ######################
+import string
+
 from Util.notifier import *
 from Api.upbit import *
 from Util.time_helper import *
@@ -66,6 +68,7 @@ class BreakOutRange(threading.Thread):
 
         saveLog("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
         send_message("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
+        send_message("{}".format(self.showAccountInfo()))
         saveLog("\n[TradeState - initialize]")
         self.init_strategy()
 
@@ -73,7 +76,7 @@ class BreakOutRange(threading.Thread):
     def init_strategy(self):
         try:
             self.setAccountInfo()
-
+            saveLog("{}".format(self.showAccountInfo()))
             saveLog(">> 초기화 완료.\n\n[TradeState - ready]")
             self.tradeState = TradeState.ready
         except Exception as e:
@@ -104,6 +107,26 @@ class BreakOutRange(threading.Thread):
             coinKey = "{}-{}".format(data['unit_currency'],data['currency'])
             self.usedCoindic[coinKey] = data['balance']
             self.targetCoin = coinKey
+
+    def showAccountInfo(self):
+        accountInfo = get_account()
+        totalBuy = 0
+        totalCur = 0
+        msg = ""
+        for data in accountInfo:
+            if data['currency'] == 'KRW':
+                continue
+            krw = float(data['balance']) * float(data['avg_buy_price'])
+            coin = "{}-{}".format(data['unit_currency'],data['currency'])
+            curPrice = get_current_price(coin) * float(data['balance'])
+            coininfo = "{} / 구매가 : {:.2f} -> 현재가 : {:.2f} / 차액 : {:.2f}]\n".format(coin, krw, curPrice, curPrice - krw)
+
+            totalBuy = totalBuy + krw
+            totalCur = totalCur + curPrice
+            msg = msg + coininfo
+            time.sleep(0.2)
+        msg = msg + "전체 구매가 : {:.2f} -> 현재가 {:.2f} / 차액 : {:.2f}".format(totalBuy, totalCur, totalCur - totalBuy)
+        return msg
 
     def makeCoinInfo(self):
         print("====Check Coin Info Start!====")
@@ -144,10 +167,12 @@ class BreakOutRange(threading.Thread):
         # 하루 마감시 마지막 Log 전송
         if check_last_time():
             send_message("[{}] 하루 마감 보고 - {}".format(now.strftime('%Y-%m-%d %H:%M:%S'),text))
+            saveLog("{}".format(self.showAccountInfo()))
 
         # 3.5 정시 정기 보고
         if check_on_time():
             send_message("[{}] 정시 정기 보고 - {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), text))
+            saveLog("{}".format(self.showAccountInfo()))
 
     def run(self):
         """실질적 수행 역할을 하는 함수"""
