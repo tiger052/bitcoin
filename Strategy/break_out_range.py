@@ -119,13 +119,13 @@ class BreakOutRange(threading.Thread):
             krw = float(data['balance']) * float(data['avg_buy_price'])
             coin = "{}-{}".format(data['unit_currency'],data['currency'])
             curPrice = get_current_price(coin) * float(data['balance'])
-            coininfo = "{} / 구매가 : {:.2f} -> 현재가 : {:.2f} / 차액 : {:.2f}]\n".format(coin, krw, curPrice, curPrice - krw)
+            coininfo = "{} / {:.2f} -> {:.2f} / {:.2f}]\n".format(coin, krw, curPrice, curPrice - krw)
 
             totalBuy = totalBuy + krw
             totalCur = totalCur + curPrice
             msg = msg + coininfo
             time.sleep(0.2)
-        msg = msg + "전체 구매가 : {:.2f} -> 현재가 {:.2f} / 차액 : {:.2f}".format(totalBuy, totalCur, totalCur - totalBuy)
+        msg = msg + "전체 / {:.2f} -> {:.2f} / {:.2f}".format(totalBuy, totalCur, totalCur - totalBuy)
         return msg
 
     def makeCoinInfo(self):
