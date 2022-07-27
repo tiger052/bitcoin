@@ -1,6 +1,6 @@
-######################
-#    변동성 돌파 전략   #
-######################
+#########################
+#    변동성 돌파 전략 기본  #
+#########################
 import string
 
 from Util.notifier import *
@@ -254,7 +254,7 @@ class BreakOutRange(threading.Thread):
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
 
                     if check_transaction_open():
-                        pass
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.targetCoin, unit, target_price, current_price))
                     else:
                         if len(self.usedCoindic) > 0:
                             for coin in self.usedCoindic:
@@ -276,8 +276,8 @@ class BreakOutRange(threading.Thread):
 
                 elif self.tradeState == TradeState.complete_sell:
                     if check_transaction_open():
-                        self.tradeState = TradeState.ready
                         saveLog(">>거래 가능 시간\n\n[TradeState - ready]")
+                    self.tradeState = TradeState.ready
 
             except Exception as e:
                 print(traceback.format_exc())
