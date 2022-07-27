@@ -5,8 +5,12 @@ end_time = 0
 def init_time_info():
     global start_time, end_time
     now = datetime.now()
-    start_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
-    end_time = now.replace(day=now.day+1, hour=8, minute=45, second=0, microsecond=0)
+    if now.hour < 9:       # 오전 9시 이전 이면 새벽 시간에 초기화 -> 시작 시간을 전날로 설정한다.
+        start_time = now.replace(day=now.day-1, hour=9, minute=0, second=0, microsecond=0)
+        end_time = now.replace(hour=8, minute=45, second=0, microsecond=0)
+    else:
+        start_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
+        end_time = now.replace(day=now.day+1, hour=8, minute=45, second=0, microsecond=0)
 
 def check_transaction_open():
     """현재 시간이 거래 시간인지 확인하는 함수 (당일 9:00 ~ 다음날 8:45)"""
