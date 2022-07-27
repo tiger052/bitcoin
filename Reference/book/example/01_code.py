@@ -19,3 +19,8 @@ print(len(btc_tickers))
 usdt_tickers = pyupbit.get_tickers("USDT")
 print(usdt_tickers)
 print(len(usdt_tickers))
+
+# 전체 티커 출력
+krw_tickers_full = pyupbit.get_tickers("KRW", False,False,True)
+print(krw_tickers_full)
+print(len(krw_tickers_full))

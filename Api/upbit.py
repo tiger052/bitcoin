@@ -76,9 +76,11 @@ def get_candle(ticker, min, count):  # ticker : 어떤 코인인지 , 캔들 조
 
 # ----------------------------------------------#
 # 티커 조회 : 티커
+# Param : fiat="", is_details=False, limit_info=False, verbose=False
+# 결과값 [{'market': 'KRW-BTC', 'korean_name': '비트코인', 'english_name': 'Bitcoin'},{} ...]
 # ----------------------------------------------#
-def get_ticker(market='KRW'):
-    tickers = pyupbit.get_tickers(market)
+def get_ticker(market='KRW', is_details=False, limit_info=False, verbose=False):
+    tickers = pyupbit.get_tickers(market, is_details, limit_info, verbose)
     return tickers
 
 
@@ -159,6 +161,7 @@ def get_account():
         'Authorization': authorization,
     }
     res = requests.get(server_url + '/v1/accounts', params="", headers=headers)
+
     return res.json()
 
 # ----------------------------------------------#
