@@ -154,7 +154,7 @@ class BreakOutRange(threading.Thread):
 
         print(">> used coin dic - size : {}, dic : {} ".format(len(self.used_coin_dic), self.used_coin_dic))
         print(">> real coin list - size : {}, list : {}".format(len(self.trade_coin_list), self.trade_coin_list))
-        print(">> current Target Coin - {}".format(self.targetCoin))
+        print(">> current Target Coin - {} : {}".format(self.targetCoin, self.ticker_dic[self.targetCoin]))
         print(">>> Complete Check Coin Info")
 
     def next_trade_coin(self):
@@ -206,14 +206,14 @@ class BreakOutRange(threading.Thread):
                                 if self.isAutoChangeCoin == True:
                                     if current_price > self.AllowCoinPrice:  # 허용 수치 보다 크다면 -> 비싼 가격의 Coin은 제외 하자
                                         self.next_trade_coin()
-                                        self.report_transaction_info("STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
+                                        self.report_transaction_info("STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(self.tradeState.value, krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                                         time.sleep(1)
                                         continue
                                 # 구매 로직 - 시장가
                                 self.upbitInst.buy_market_order(self.targetCoin,krw * self.feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
                                 self.used_coin_dic[self.targetCoin] = current_price  # 매수 dic에 저장
-                                saveLog(">>[{}] 매수 - KRW :{}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw,self.targetCoin, unit, target_price, current_price))
-                                send_message("[{}] 매수!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.targetCoin, 5000 * self.feePercent))
+                                saveLog(">>[{}] 매수 - KRW :{}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw,self.ticker_dic[self.targetCoin], unit, target_price, current_price))
+                                send_message("[{}] 매수!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.ticker_dic[self.targetCoin], 5000 * self.feePercent))
 
                                 self.tradeState = TradeState.complete_trade
                                 saveLog(">>Buy Complete\n\n[{}] - [TradeState - complete_trade]".format(datetime.now()))
@@ -224,7 +224,7 @@ class BreakOutRange(threading.Thread):
                             self.tradeState = TradeState.complete_trade
                             saveLog(">>원화 부족 : {}\n\n[{}] - [TradeState - complete_trade]".format(krw,datetime.now()))
 
-                        self.report_transaction_info("STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
+                        self.report_transaction_info("STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(self.tradeState.value, krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                     else:
                         self.tradeState = TradeState.selling
                         saveLog(">>거래 시간 종료\n\n[{}] - [TradeState - complete_trade]".format(datetime.now()))
@@ -233,7 +233,7 @@ class BreakOutRange(threading.Thread):
                     # 구매 여부 확인 로직
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
                     if unit > 0:
-                        saveLog(">>해당 코인 보유 중 . coin :{} , unit : {}\n\n[{}] - [TradeState - waiting]".format(self.targetCoin, unit, datetime.now()))
+                        saveLog(">>해당 코인 보유 중 . coin :{} , unit : {}\n\n[{}] - [TradeState - waiting]".format(self.ticker_dic[self.targetCoin], unit, datetime.now()))
 
                     self.tradeState = TradeState.waiting
                     saveLog(">>전략 특성상 트래이드 대기 처리\n\n[{}] - [TradeState - waiting]".format(datetime.now()))
@@ -245,7 +245,7 @@ class BreakOutRange(threading.Thread):
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
 
                     if check_transaction_open():
-                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.targetCoin, unit, target_price, current_price))
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                     else:
                         self.tradeState = TradeState.selling
                         saveLog(">>거래 시간 종료\n\n[{}] - [TradeState - selling]".format(datetime.now()))
@@ -258,7 +258,7 @@ class BreakOutRange(threading.Thread):
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
 
                     if check_transaction_open():
-                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.targetCoin, unit, target_price, current_price))
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                     else:
                         if len(self.used_coin_dic) > 0:
                             for coin in self.used_coin_dic:
@@ -267,16 +267,16 @@ class BreakOutRange(threading.Thread):
                                 if current_price * unit > 5000:
                                     self.upbitInst.sell_market_order(coin, unit)  # 비트코인 매도 로직 - 수수료 0.0005 고료
                                     self.used_coin_dic.pop(coin)
-                                    saveLog("[{}] 매도 - KRW : {}, Coin Name :{}, Unit : {}, Target Price : {}, Current Price : {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw, self.targetCoin, unit, target_price, current_price))
-                                    send_message("[{}] 매도!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),self.targetCoin, unit))
+                                    saveLog("[{}] 매도 - KRW : {}, Coin Name :{}, Unit : {}, Target Price : {}, Current Price : {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
+                                    send_message("[{}] 매도!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),self.ticker_dic[self.targetCoin], unit))
                         else:
                             self.tradeState = TradeState.complete_sell
                             saveLog(">>거래 완료. 남은 코인 없음\n\n[{}] - [TradeState - complete_sell]".format(datetime.now()))
-                            saveLog("[{}]  매도 완료 - KRW : {}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), krw, self.targetCoin, unit, target_price, current_price))
+                            saveLog("[{}]  매도 완료 - KRW : {}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
 
                         self.report_transaction_info(
                             "STATE : {},  KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(
-                                self.tradeState.value, krw, self.targetCoin, unit, target_price, current_price))
+                                self.tradeState.value, krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
 
                 elif self.tradeState == TradeState.complete_sell:
                     if check_transaction_open():
