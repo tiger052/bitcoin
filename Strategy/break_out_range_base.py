@@ -18,6 +18,7 @@ from enum import Enum
 class TradeState(Enum):
     initialize = "init"                         # 초기화 단계 : Ticer 정보 및 현재 Coin 상태를 설정 및 초기화 한다.
     ready = "ready"                             # 준비 단계 : 매수 전 데이터를 수집하는 단계 (변동성 + 하락 + 효율 )
+    wait_for_start = "wait_for_start"           # 시작 대기 단계 : 준비는 완료 됬으며 Trade를 시작 하기 전 단계
     trading = "trading"                         # 트레이딩 단계 : 매수를 시도하는 단계
     complete_trade = "complete_trade"           # 트레이드 한 상태 : 매수 처리가 완료된 상태 (변동성)
     drop_check = "drop_check"                   # 하락 체크 상태 : 매수한 코인이 하락 하는지 체크 (변동성 + 하락)
@@ -29,11 +30,11 @@ class BreakOutRange(threading.Thread):
     def __init__(self):
 
         threading.Thread.__init__(self)
-
-        self.strategy_name = "break_out_range"
+        # -- Login
         self.upbitInst = create_instance()
 
         # -- 트레이드 셋팅
+        self.strategy_name = "break_out_range"
         self.targetCoin = ""  # 트레이드 할 Coin
         self.tradeState = TradeState.initialize  # 트레이드 상태
         self.processState = ProcessState.complete  # 처리 상태
@@ -95,10 +96,10 @@ class BreakOutRange(threading.Thread):
         self.make_trade_coin_list()
         init_time_info()
         self.processState = ProcessState.complete
-        self.tradeState = TradeState.trading
+        self.tradeState = TradeState.wait_for_start
         send_message("{}".format(self.show_account_Info()))
         saveLog("{}".format(self.show_account_Info()))
-        saveLog(">> 전략 준비 완료.\n\n[{}] - [TradeState - Trading]".format(datetime.now()))
+        saveLog(">> 전략 준비 완료.\n\n[{}] - [TradeState - wait_for_start]".format(datetime.now()))
 
     def get_account_info(self):
         print(">>> setAccount!")
@@ -122,13 +123,13 @@ class BreakOutRange(threading.Thread):
             krw = float(data['balance']) * float(data['avg_buy_price'])
             coin = "{}-{}".format(data['unit_currency'],data['currency'])
             curPrice = get_current_price(coin) * float(data['balance'])
-            coininfo = "{} / {:.2f} -> {:.2f} / {:.2f}]\n".format(self.ticker_dic[coin], krw, curPrice, curPrice - krw)
+            coininfo = "[{} / {:.2f} -> {:.2f} / {:.2f}], ".format(self.ticker_dic[coin], krw, curPrice, curPrice - krw)
 
             totalBuy = totalBuy + krw
             totalCur = totalCur + curPrice
             msg = msg + coininfo
             time.sleep(0.2)
-        msg = msg + "전체 / {:.2f} -> {:.2f} / {:.2f}".format(totalBuy, totalCur, totalCur - totalBuy)
+        msg = msg + "[전체 / {:.2f} -> {:.2f} / {:.2f}]".format(totalBuy, totalCur, totalCur - totalBuy)
         return msg
 
     def get_coin_list_by_market(self):
@@ -193,7 +194,18 @@ class BreakOutRange(threading.Thread):
                 elif self.tradeState == TradeState.ready:    # 2. 설정 초기화
                     self.reset_strategy()
 
-                elif self.tradeState == TradeState.trading:  # 3. 트레이딩
+                elif self.tradeState == TradeState.wait_for_start:      #3. 시작 전 대기 상태
+                    if check_transaction_open():
+                        self.tradeState = TradeState.trading
+                        saveLog(">> 트레이딩 시작.\n\n[{}] - [TradeState - trading]".format(datetime.now()))
+                    else:
+                        target_price = get_target_price(self.targetCoin, self.targetPercent)  # 목표값 설정
+                        current_price = get_current_price(self.targetCoin)  # 현재 값
+                        krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
+                        unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw,self.ticker_dic[self.targetCoin],unit,target_price,current_price))
+
+                elif self.tradeState == TradeState.trading:  # 4. 트레이딩
                     target_price = get_target_price(self.targetCoin, self.targetPercent)  # 목표값 설정
                     current_price = get_current_price(self.targetCoin)  # 현재 값
                     krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
@@ -281,6 +293,8 @@ class BreakOutRange(threading.Thread):
                 elif self.tradeState == TradeState.complete_sell:
                     if check_transaction_open():
                         saveLog(">>거래 가능 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
+                    else:
+                        saveLog(">>거래 종료 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
                     self.tradeState = TradeState.ready
 
             except Exception as e:
