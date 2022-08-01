@@ -4,7 +4,7 @@ import pandas as pd
 import pyupbit
 import numpy as np
 from Api.upbit import *
-
+from Util.db_helper import *
 
 #용어 설명
 '''
@@ -15,10 +15,12 @@ from Api.upbit import *
     bor_profit = high > bor_target 보다 크다면 (변동성 돌파 구매) -> close - bor_target        (수익) 
     bor_cum_profit = bor_profit.shift(1) + bor_profit
 
-    # 백 테스트 정보 
+    # 백 테스트 정보
+    - 7일 기준으로 제공 되는 모든 Data를 저장한다.  
     - 변동성 돌파가 이뤄 질 때 해당 날의 이익 액을 계산 한다.
-    - 수집 시작날의 목표 가격이 마지막날 종가에 어떻게 변했는지 확인한다. 
-    - 7일 기준으로 가장 높은 점수의    
+    - 수집 시작날의 목표 가격이 마지막날 종가에 어떻게 변했는지 확인한다.  
+    - Todo : 2일 기준 단위로 높은 확률로 수익을 내는 알고리즘을 구성한다. 
+    - Todo : 2일 단위의 Data를 모아 별도로 시뮬레이션 할수 있는 테스트 알고리즘을 구현한다. 
      
 
 [RSI 공식 Data]
@@ -65,7 +67,7 @@ def makeData(ticker_list,k):
                       ])
     for i, value in enumerate(ticker_list):
         cur_df = df.iloc[i, 0]
-        df2 = pyupbit.get_ohlcv(df.iloc[i,0], count=2)  # 7일동안의 원화 시장의 BTC 라는 의미
+        df2 = pyupbit.get_ohlcv(df.iloc[i,0], count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
         for j in range(0, df2.shape[0]):  # shpe 0 은 row , shape 1 은 col - open	high	low	close	volume	value
             if j == 0:
                 df.iloc[i, 3] = df2.iloc[j, 0]           # open
@@ -158,16 +160,30 @@ def makeData(ticker_list,k):
         # bor 전략 구분
         df.iloc[i, 17] = "|"
 
-
-        '''
-        bor_range = 변동성 돌파 기준 범위 계산, (고가 - 저가) * k값
-        bor_target = open + bor_range(전날)
-        bor_profit = high > bor_target 보다 크다면 (변동성 돌파 구매) -> close - bor_target        (수익) 
-        bor_cum_profit = bor_profit.shift(1) + bor_profit
-        '''
         # wait
         time.sleep(0.1)
-    df.to_excel("dd.xlsx")
+
+    # save research Data
+    df.to_excel("back_data.xlsx")
+    if not check_table_exist("bitcoin",'uniserse'):
+        insert_df_to_db("bitcoin", 'universe', df)
+        sql = "select * from {}".format('universe')
+        cur = execute_sql("bitcoin", sql)
+        print(cur.fetchall())
+
+
+
+def test():
+    sql = "select * from {}".format('universe')
+    cur = execute_sql("bitcoin", sql)
+    print(cur.fetchall())
+    '''
+    for i, value in enumerate(ticker_list):
+        df3 = pyupbit.get_ohlcv(df.iloc[i, 0], count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
+        for j in range(0, df2.shape[0]):  # shpe 0 은 row , shape 1 은 col - open	high	low	close	volume	value
+            if j == 0:
+    # back testing break_out_range
+    '''
 
 def break_out_range():
     df = pyupbit.get_ohlcv("KRW-CVC", count=3)  # 7일동안의 원화 시장의 BTC 라는 의미
@@ -201,9 +217,10 @@ def break_out_range():
     df.to_excel("dd.xlsx")
     #'''
 
-bit = create_instance()
-ticker_data = get_ticker("KRW", False, False, True)
+#bit = create_instance()
+#ticker_data = get_ticker("KRW", False, False, True)
 
-makeData(ticker_data,0.5)
+#makeData(ticker_data,0.5)
 
 #break_out_range()
+test()
