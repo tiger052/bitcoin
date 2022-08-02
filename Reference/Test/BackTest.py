@@ -61,9 +61,14 @@ def makeData(ticker_list,k):
                           'bor_strategy',           # 17.break out range 전략 구분
                           'bor_range',              # 18.변동성 범위
                           'bor_target_price',       # 19.변동성 돌파 가격
-                          'bor_profit',             # 20.수익률
-                          'bor_cum_profit',         # 21.누적
-                          'bor_profit_ratio',       # 22.이익 비율 (종가 / 시작 타겟 가 * 100)
+                          'bor_profit',             # 20.수익액
+                          'bor_ror',                # 21.수익률
+                          'bor_hpr',                # 22.누적 수익률
+                          'bor_draw_down',          # 23.Draw Down (누적  최대 값과 현재 hpr 차이 / 누적 최대값 * 100) - (낙폭)
+                          'bor_start_target',       # 24.조회 시작 타겟값
+                          'bor_end_target',         # 25.조회 최종 종가
+                          'bor_cum_profit',         # 26.누적 수익 액
+                          'bor_profit_ratio',       # 27.이익 비율 (종가 / 시작 타겟 가 * 100)
                       ])
     for i, value in enumerate(ticker_list):
         cur_df = df.iloc[i, 0]
@@ -83,8 +88,8 @@ def makeData(ticker_list,k):
                 df.iloc[i, 18] = 0  # bor range
                 df.iloc[i, 19] = 0  # bor_target_price
                 df.iloc[i, 20] = 0  # bor_profit
-                df.iloc[i, 21] = 0
-                #bor_profit = high > bor_target 보다 크다면 (변동성 돌파 구매) -> close - bor_target        (수익)
+                df.iloc[i, 21] = 1  # ror - 수익률
+                df.iloc[i, 26] = 0  # bor_profit = high > bor_target 보다 크다면 (변동성 돌파 구매) -> close - bor_target        (수익)
             else:
                 df.iloc[i, 3] = "{},{}".format(df.iloc[i, 3],df2.iloc[j, 0])      # open
                 df.iloc[i, 4] = "{},{}".format(df.iloc[i, 4], df2.iloc[j, 1])  # high
@@ -101,12 +106,18 @@ def makeData(ticker_list,k):
                 df.iloc[i, 18] = "{},{}".format(df.iloc[i, 18], (df2.iloc[j-1, 1] - df2.iloc[j-1, 2]))    # bor_range
                 df.iloc[i, 19] = "{},{}".format(df.iloc[i, 19], bor_target)  # bor_target_price
 
-                if df2.iloc[j, 1] > bor_target:
+                ror = 0
+                if df2.iloc[j, 1] > bor_target:     # high > bor_target
                     bor_profit = df2.iloc[j, 3] - bor_target
+                    ror = df2.iloc[j, 3] / bor_target - 0.0005
                 else:
                     bor_profit = 0
+                    ror = 1
+
                 df.iloc[i, 20] = "{},{}".format(df.iloc[i, 20], bor_profit)  # bor_profit
-                df.iloc[i, 21] = df.iloc[i, 21] + bor_profit
+                df.iloc[i, 21] = "{},{}".format(df.iloc[i, 21], ror) # ror - 수익률
+
+                df.iloc[i, 26] = df.iloc[i, 26] + bor_profit
 
         open_data = df.iloc[i, 3]
         str_open = open_data.split(',')
@@ -116,7 +127,7 @@ def makeData(ticker_list,k):
         str_target_price = target_price_data.split(',')
 
         #종가 / 시작 타겟 가 * 100)
-        df.iloc[i, 22] = float(str_close[len(str_close)-1]) / float(str_target_price[1]) * 100
+        df.iloc[i, 27] = float(str_close[len(str_close)-1]) / float(str_target_price[1]) * 100
 
         # rsi 전략 구분
         df.iloc[i, 12] = "|"
@@ -163,6 +174,35 @@ def makeData(ticker_list,k):
         # wait
         time.sleep(0.1)
 
+    #bor start, end price 추가
+    for i, value in enumerate(ticker_list):
+        #hpr 누적곱
+        rorData = str.split(df.iloc[i, 21], ',')
+        result = 1
+        hprMax = 0
+        for j, value in enumerate(rorData):
+            if j == 0:
+                df.iloc[i, 22] = result  # hpr - 누적 수익률
+                hprMax = result;
+                dd = (hprMax - result) / hprMax * 100
+                df.iloc[i, 23] = dd  # Draw Down 계산
+            else:
+                result = float(rorData[j]) * result
+                df.iloc[i, 22] = "{},{}".format(df.iloc[i, 22], result)  # hpr - 누적 수익률
+                if result > hprMax:
+                    hprMax = result
+
+                dd = (hprMax - result) / hprMax * 100
+                df.iloc[i, 23] = "{},{}".format(df.iloc[i, 23], dd)  # Draw Down 계산
+
+        #21. bor_start
+        data = str.split(df.iloc[i, 19], ',')
+        df.iloc[i, 24] = data[1]            # 두번째 부터 매매
+
+        # 22. bor_end
+        data = str.split(df.iloc[i, 6], ',')
+        df.iloc[i, 25] = data[-1]
+
     # save research Data
     df.to_excel("back_data.xlsx")
     if not check_table_exist("bitcoin",'uniserse'):
@@ -170,8 +210,6 @@ def makeData(ticker_list,k):
         sql = "select * from {}".format('universe')
         cur = execute_sql("bitcoin", sql)
         print(cur.fetchall())
-
-
 
 def test():
     sql = "select * from {}".format('universe')
@@ -186,7 +224,7 @@ def test():
     '''
 
 def break_out_range():
-    df = pyupbit.get_ohlcv("KRW-CVC", count=3)  # 7일동안의 원화 시장의 BTC 라는 의미
+    df = pyupbit.get_ohlcv("KRW-CVC", count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
     print(df)
     # 변동성 돌파 기준 범위 계산, (고가 - 저가) * k값
     df['bor_range'] = (df['high'] - df['low']) * 0.5
@@ -217,10 +255,31 @@ def break_out_range():
     df.to_excel("dd.xlsx")
     #'''
 
-#bit = create_instance()
-#ticker_data = get_ticker("KRW", False, False, True)
+bit = create_instance()
+ticker_data = get_ticker("KRW", False, False, True)
 
-#makeData(ticker_data,0.5)
+makeData(ticker_data,0.5)
 
-#break_out_range()
-test()
+break_out_range()
+#test()
+
+'''
+WITH split(opening_price, word, str, offsep) AS
+(
+    VALUES
+    (
+        2,
+        '',
+        (SELECT opening_price FROM universe WHERE market = 'KRW-NEO'),
+        1
+    )
+    UNION ALL
+    SELECT
+        opening_price,
+        substr(str, 0, CASE WHEN instr(str, ',') THEN instr(str, ',') ELSE length(str)+1 END),
+        ltrim(substr(str, instr(str, ',')), ','),
+        instr(str, ',')
+        FROM split
+        WHERE offsep
+) SELECT opening_price, word FROM split WHERE word!='';
+'''
