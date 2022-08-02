@@ -37,7 +37,7 @@ RSI 공식                 - 100 * AU / (AU + AD) -> RSI 는 100에 가까울 �
 
 '''
 
-def makeData(ticker_list,k):
+def makeData(ticker_list,k, file_name, count):
     # OHCLV(open, high, low, close, volume)로 당일 시가, 고가, 저가, 종가, 거래량에 대한 데이터
     df = pd.DataFrame(ticker_list,
                       columns=[
@@ -72,7 +72,7 @@ def makeData(ticker_list,k):
                       ])
     for i, value in enumerate(ticker_list):
         cur_df = df.iloc[i, 0]
-        df2 = pyupbit.get_ohlcv(df.iloc[i,0], count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
+        df2 = pyupbit.get_ohlcv(df.iloc[i,0], count=count)  # 7일동안의 원화 시장의 BTC 라는 의미
         for j in range(0, df2.shape[0]):  # shpe 0 은 row , shape 1 은 col - open	high	low	close	volume	value
             if j == 0:
                 df.iloc[i, 3] = df2.iloc[j, 0]           # open
@@ -197,17 +197,17 @@ def makeData(ticker_list,k):
 
         #21. bor_start
         data = str.split(df.iloc[i, 19], ',')
-        df.iloc[i, 24] = data[1]            # 두번째 부터 매매
+        df.iloc[i, 24] = float(data[1])            # 두번째 부터 매매
 
         # 22. bor_end
         data = str.split(df.iloc[i, 6], ',')
-        df.iloc[i, 25] = data[-1]
+        df.iloc[i, 25] = float(data[-1])
 
     # save research Data
-    df.to_excel("back_data.xlsx")
-    if not check_table_exist("bitcoin",'uniserse'):
-        insert_df_to_db("bitcoin", 'universe', df)
-        sql = "select * from {}".format('universe')
+    df.to_excel("{}_{}.xlsx".format(file_name, count))
+    if not check_table_exist("bitcoin","{}_{}".format(file_name,count)):
+        insert_df_to_db("bitcoin","{}_{}".format(file_name,count), df)
+        sql = "select * from {}".format("{}_{}".format(file_name,count))
         cur = execute_sql("bitcoin", sql)
         print(cur.fetchall())
 
@@ -255,13 +255,20 @@ def break_out_range():
     df.to_excel("dd.xlsx")
     #'''
 
+#===== make Data =======#
 bit = create_instance()
 ticker_data = get_ticker("KRW", False, False, True)
 
-makeData(ticker_data,0.5)
+makeData(ticker_data,0.5, "universe", 7)
+makeData(ticker_data,0.5, "universe", 6)
+makeData(ticker_data,0.5, "universe", 5)
+makeData(ticker_data,0.5, "universe", 4)
+makeData(ticker_data,0.5, "universe", 3)
+makeData(ticker_data,0.5, "universe", 2)
 
 break_out_range()
-#test()
+
+#===== Simulation ======#
 
 '''
 WITH split(opening_price, word, str, offsep) AS
