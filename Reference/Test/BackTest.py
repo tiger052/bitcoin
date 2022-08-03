@@ -91,7 +91,7 @@ def makeData(ticker_list,k, file_name, count):
                 df.iloc[i, 21] = 1  # ror - 수익률
                 df.iloc[i, 26] = 0  # bor_profit = high > bor_target 보다 크다면 (변동성 돌파 구매) -> close - bor_target        (수익)
             else:
-                df.iloc[i, 3] = "{},{}".format(df.iloc[i, 3],df2.iloc[j, 0])      # open
+                df.iloc[i, 3] = "{},{}".format(df.iloc[i, 3],df2.iloc[j, 0])   # open
                 df.iloc[i, 4] = "{},{}".format(df.iloc[i, 4], df2.iloc[j, 1])  # high
                 df.iloc[i, 5] = "{},{}".format(df.iloc[i, 5], df2.iloc[j, 2])  # low
                 df.iloc[i, 6] = "{},{}".format(df.iloc[i, 6], df2.iloc[j, 3])  # close
@@ -205,56 +205,83 @@ def makeData(ticker_list,k, file_name, count):
 
     # save research Data
     df.to_excel("{}_{}.xlsx".format(file_name, count))
-    if not check_table_exist("bitcoin","{}_{}".format(file_name,count)):
-        insert_df_to_db("bitcoin","{}_{}".format(file_name,count), df)
-        sql = "select * from {}".format("{}_{}".format(file_name,count))
-        cur = execute_sql("bitcoin", sql)
-        print(cur.fetchall())
+    if check_table_exist("bitcoin", "{}_{}".format(file_name, count)):
+       clear_table_db("bitcoin", "{}_{}".format(file_name, count))
 
-def test():
-    sql = "select * from {}".format('universe')
+    insert_df_to_db("bitcoin","{}_{}".format(file_name,count), df)
+    sql = "select * from {}".format("{}_{}".format(file_name,count))
     cur = execute_sql("bitcoin", sql)
     print(cur.fetchall())
-    '''
-    for i, value in enumerate(ticker_list):
-        df3 = pyupbit.get_ohlcv(df.iloc[i, 0], count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
-        for j in range(0, df2.shape[0]):  # shpe 0 은 row , shape 1 은 col - open	high	low	close	volume	value
-            if j == 0:
-    # back testing break_out_range
-    '''
 
-def break_out_range():
-    df = pyupbit.get_ohlcv("KRW-CVC", count=7)  # 7일동안의 원화 시장의 BTC 라는 의미
-    print(df)
-    # 변동성 돌파 기준 범위 계산, (고가 - 저가) * k값
-    df['bor_range'] = (df['high'] - df['low']) * 0.5
-    print(df)
-    #print(df['range'])
+## 낙폭 치를 이용한 Rank 계상
+def cal_drawdown_rank(data_dic):
+    print("calculate Rank Start ! : cnt - {}".format(len(data_dic)))
+    rank_data_dic = {}
+    rank_dic_dic = {}
+    cal_dic = {}
+    print(data_dic)
 
-    # range 컬럼을 한칸씩 밑으로 내림(.shift(1)) -> 첫칸 은 Nan
-    df['bor_target'] = df['open'] + df['bor_range'].shift(1)    #
+    #1. Check cal days
+    day_cnt = 0
+    for key in data_dic:
+        data = str.split(data_dic[key], ',')
+        day_cnt = len(data)
+        break
+    print("day cnt : {}".format(day_cnt))
+    rank_data_dic = data_dic
 
-    fee = 0.0005 #수수료 fee = 0.0005
+    for i in range(0, day_cnt-1):
+        cal_dic = {}
+        rank_dic = {}
+        for key in rank_data_dic:
+            data = str.split(data_dic[key], ',')
+            if i == 0:
+                if 0 < float(data[day_cnt - (1 + i)]):
+                    cal_dic[key] = float(data[day_cnt - (1 + i)])
+                    rank_dic[key] = data_dic[key]
+            else:
+                if 0 < float(data[day_cnt - (1 + i)]) and float(data[day_cnt - (1 + i)]) < float(data[day_cnt - (0 + i)]):
+                    cal_dic[key] = float(data[day_cnt - (0 + i)]) - float(data[day_cnt - (1 + i)])
+                    rank_dic[key] = data_dic[key]
+        rank_data_dic = rank_dic
+        sorted_dict = sorted(cal_dic.items(), key=(lambda item: item[1]), reverse=True)
+        print(sorted_dict)
+        df = pd.DataFrame(sorted_dict)
+        df.to_excel("test_{}.xlsx".format(i))
+        rank_dic_dic[i] = sorted_dict
 
-    # np.where(조건문, 참일때 값, 거짓일때 값) -> ror 수익률
-    df['ror'] = np.where(df['high'] > df['bor_target'],             # 고가가 타겟 보다 높으면
-                         df['close'] / df['bor_target'] - fee,      # 종가 / 타겟
-                         1)                                         # 1인 이유는 매수가 이뤄지지 않아서
+    dd = dict(reversed(list(rank_dic_dic.items())))
+    real_rank = {}
+    for i in dd:
+        for data_dic in dd[i]:
+            if not data_dic[0] in real_rank:
+                real_rank[data_dic[0]] = data_dic[1]
+            else:
+                print("is key {}".format(data_dic[0]))
 
-    # 누적 곱 계산(cumprod) => 누적 수익률
-    df['hpr'] = df['ror'].cumprod()
+    df = pd.DataFrame(list(real_rank))
+    df.to_excel("test_final.xlsx")
+    print(len(list(real_rank)))
+    return list(real_rank)
 
-    # Draw Down 계산 (누적  최대 값과 현재 hpr 차이 / 누적 최대값 * 100)
-    df['dd'] = (df['hpr'].cummax() - df['hpr']) / df['hpr'].cummax() * 100
+def drawdown_rank_simulation(search_day, rank_cnt):
+    #1. get db data
+    sql = "select market, bor_draw_down from " \
+          "(select * from {} where bor_start_target < 5000)"\
+          .format('universe_{}'.format(search_day))
+    cur = execute_sql("bitcoin", sql)
+    curData = cur.fetchall()        #list [('KRW-MTL', '0.0,0.0,0.0,0.0'),...]
 
-    # MDD 계산 (낙폭)
-    print("MDD(%): ", df['dd'].max())
+    # 1. data 정리 -> dictionary {'KRW-MTL': '0.0,0.0,0.0,0.0'...}
+    data_dic = {}
+    for i, value in curData:
+        data_dic[i] = value
 
-    # 엑셀로 출력
-    print(df)
-    df.to_excel("dd.xlsx")
-    #'''
+    # 2. draw down rank 계산
+    print(cal_drawdown_rank(data_dic)[0:rank_cnt])
 
+
+'''
 #===== make Data =======#
 bit = create_instance()
 ticker_data = get_ticker("KRW", False, False, True)
@@ -266,27 +293,31 @@ makeData(ticker_data,0.5, "universe", 4)
 makeData(ticker_data,0.5, "universe", 3)
 makeData(ticker_data,0.5, "universe", 2)
 
-break_out_range()
-
+#break_out_range()
+'''
 #===== Simulation ======#
+drawdown_rank_simulation(5, 5)
+
+
 
 '''
-WITH split(opening_price, word, str, offsep) AS
-(
-    VALUES
-    (
-        2,
-        '',
-        (SELECT opening_price FROM universe WHERE market = 'KRW-NEO'),
-        1
-    )
-    UNION ALL
-    SELECT
-        opening_price,
-        substr(str, 0, CASE WHEN instr(str, ',') THEN instr(str, ',') ELSE length(str)+1 END),
-        ltrim(substr(str, instr(str, ',')), ','),
-        instr(str, ',')
-        FROM split
-        WHERE offsep
-) SELECT opening_price, word FROM split WHERE word!='';
+--SELECT substr('yumipink@naver.com', 5)  
+	  --,substr('yumipink@naver.com', 1,4)  
+      --,instr('yumipink@naver.com','@') 
+	  --,substr('yumipink@naver.com',1,(instr('yumipink@naver.com','@')-1))
+
+특수 문자가 여러개 있을 때
+--SELECT
+--  SUBSTR(MSG, 1, INSTR(MSG, '|', 1, 1) - 1) MSG_1
+--, SUBSTR(MSG, INSTR(MSG, '|', 1, 1) + 1, INSTR(MSG, '|', 1, 2) - INSTR(MSG, '|', 1, 1) - 1) MSG_2
+--, SUBSTR(MSG, INSTR(MSG, '|', 1, 2) + 1, INSTR(MSG, '|', 1, 3) - INSTR(MSG, '|', 1, 2) - 1) MSG_3
+--, SUBSTR(MSG, INSTR(MSG, '|', 1, 3) + 1, INSTR(MSG, '|', 1, 4) - INSTR(MSG, '|', 1, 3) - 1) MSG_4
+--, SUBSTR(MSG, INSTR(MSG, '|', 1, 4) + 1) MSG_5
+--FROM (SELECT '111|222|333|444|555' MSG FROM DUAL)
+--;
+--SELECT
+ -- INSTR(SOURCE_INVOICE_NUM, '-',-1)
+--, SUBSTR(SOURCE_INVOICE_NUM, INSTR(SOURCE_INVOICE_NUM, '-', 1, 3) + 1)
+--FROM (SELECT 'IMC-071217-65123-ISRB071200008' SOURCE_INVOICE_NUM FROM DUAL)
+
 '''
