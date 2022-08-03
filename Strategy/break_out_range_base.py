@@ -77,6 +77,7 @@ class BreakOutRange(threading.Thread):
     def init_strategy(self):
         try:
             self.get_account_info()
+            init_time_info()  # 당일 시간을 Reset 한다.
             saveLog(">> 초기화 완료.\n\n[{}] - [TradeState - ready]".format(datetime.now()))
             self.tradeState = TradeState.ready
         except Exception as e:
@@ -93,8 +94,9 @@ class BreakOutRange(threading.Thread):
         self.tickerlist.clear()
         self.ticker_dic.clear()
         self.get_coin_list_by_market()
-        self.make_trade_coin_list()
-        init_time_info()
+        self.make_trade_coin_list()     # 거래한 코인 정보를 생성한다.
+        init_time_info()  # 당일 시간을 Reset 한다.
+
         self.processState = ProcessState.complete
         self.tradeState = TradeState.wait_for_start
         send_message("{}".format(self.show_account_Info()))
@@ -192,7 +194,14 @@ class BreakOutRange(threading.Thread):
                     continue
 
                 elif self.tradeState == TradeState.ready:    # 2. 설정 초기화
-                    self.reset_strategy()
+                    if check_transaction_open():
+                        self.reset_strategy()
+                    else:
+                        target_price = get_target_price(self.targetCoin, self.targetPercent)  # 목표값 설정
+                        current_price = get_current_price(self.targetCoin)  # 현재 값
+                        krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
+                        unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
+                        self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw,self.ticker_dic[self.targetCoin],unit,target_price,current_price))
 
                 elif self.tradeState == TradeState.wait_for_start:      #3. 시작 전 대기 상태
                     if check_transaction_open():
