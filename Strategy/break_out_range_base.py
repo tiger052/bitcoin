@@ -179,7 +179,7 @@ class BreakOutRange(threading.Thread):
 
         # 3.5 정시 정기 보고
         if check_on_time():
-            send_message("[{}] 정시 정기 보고 - {}".format(now.strftime('%Y-%m-%d %H:%M:%S'), text))
+            send_message("[{}] 정시 정기 보고 - {}\n{}".format(now.strftime('%Y-%m-%d %H:%M:%S'), self.show_account_Info(), text))
             saveLog("{}".format(self.show_account_Info()))
 
     def run(self):
