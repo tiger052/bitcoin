@@ -106,6 +106,7 @@ class BreakOutRange(threading.Thread):
     def get_account_info(self):
         saveLog("{}".format(">>> setAccount!"))
         accountInfo = get_account()
+        time.sleep(1)
         for data in accountInfo:
             print(data)
             if data['currency'] == 'BTC' or data['currency'] == 'KRW':
