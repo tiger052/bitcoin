@@ -7,6 +7,7 @@ from Util.notifier import *
 from Api.upbit import *
 from Util.time_helper import *
 from Util.file_helper import *
+from Util.make_up_universe import *
 
 import sys
 import os
@@ -38,6 +39,7 @@ class BreakOutRange(threading.Thread):
         self.targetCoin = ""  # 트레이드 할 Coin
         self.tradeState = TradeState.initialize  # 트레이드 상태
         self.processState = ProcessState.complete  # 처리 상태
+        self.universeType = BreakOutRangeUniverse.limit_price   # Universe Type 설정
 
         # -- 트레이딩 수치값
         self.targetPercent = 0.5  # 변동성 돌파 목표치 비율
@@ -94,6 +96,7 @@ class BreakOutRange(threading.Thread):
         self.tickerlist.clear()
         self.ticker_dic.clear()
         self.get_coin_list_by_market()
+        make_universe_data_bor(self.tickerlist,0.5,"universe", 5)
         self.make_trade_coin_list()     # 거래한 코인 정보를 생성한다.
         init_time_info()  # 당일 시간을 Reset 한다.
 
@@ -141,21 +144,27 @@ class BreakOutRange(threading.Thread):
         print(">> ticker list - {}, {}".format(len(self.tickerlist), self.tickerlist))
 
     def make_trade_coin_list(self):
-        for ticker in self.tickerlist:
-            self.ticker_dic[ticker['market']] = ticker['korean_name']
-            curprice = get_current_price(ticker['market'])
-            time.sleep(0.2)
-            balance = get_balance(self.upbitInst, ticker['market'])
-            if balance > 0:
-                if curprice * balance > 5000:
-                    self.used_coin_dic[ticker['market']] = balance
+        if self.universeType == BreakOutRangeUniverse.limit_price:
 
-            if 1 < curprice < 5000:  # 소수점 이하 coin 은 배제한다
-                self.trade_coin_list.append(ticker['market'])
+            #전체 Coin 정보 저장
+            for ticker in self.tickerlist:
+                self.ticker_dic[ticker['market']] = ticker['korean_name']              #KRW-MTL = '메탈'
+                curprice = get_current_price(ticker['market'])
+                time.sleep(0.2)
+                balance = get_balance(self.upbitInst, ticker['market'])
+                if balance > 0:
+                    if curprice * balance > 5000:
+                        self.used_coin_dic[ticker['market']] = balance
+
+            # Trade 할 Coin List
+            self.trade_coin_list = get_universe_bor_limit_price(5,5000)
+        elif self.universeType == BreakOutRangeUniverse.drawdown_rank:
+            pass
 
         if self.targetCoin is "":
             self.targetCoin = self.trade_coin_list[0]
 
+        print(">> Universe Type - {}".format(self.universeType))
         print(">> used coin dic - size : {}, dic : {} ".format(len(self.used_coin_dic), self.used_coin_dic))
         print(">> real coin list - size : {}, list : {}".format(len(self.trade_coin_list), self.trade_coin_list))
         print(">> current Target Coin - {} : {}".format(self.targetCoin, self.ticker_dic[self.targetCoin]))

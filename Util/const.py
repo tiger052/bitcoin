@@ -15,6 +15,11 @@ class TradeMode(Enum):
     break_out_range_and_asking_buy_down_sell = "변동성 돌파 전략 + 호가 비교 + 하락시 매도 전략"  # 매수 : 변동성 돌파 전략 , 매도 : 일정 기준 하락시
     reading = "준비중"
 
+class BreakOutRangeUniverse(Enum):
+    limit_price = "제한된 금액 선별"
+    drawdown_rank = "낙폭 순위 선별"
+    reading = "준비중"
+
 #===== Config Info =====#
 snsType = SNSType.Telegram
 

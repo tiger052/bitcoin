@@ -42,7 +42,7 @@ RSI 공식                 - 100 * AU / (AU + AD) -> RSI 는 100에 가까울 �
 # @ k : 변동성 돌파 매수 비율
 # @ file_name : data 저장할 db 명
 # @ count : 검색할 day수
-def make_universe_for_break_out_range(ticker_list, k, file_name, count):
+def make_universe_data_bor(ticker_list, k, file_name, count):
     # OHCLV(open, high, low, close, volume)로 당일 시가, 고가, 저가, 종가, 거래량에 대한 데이터
     df = pd.DataFrame(ticker_list,
                       columns=[
@@ -221,7 +221,7 @@ def make_universe_for_break_out_range(ticker_list, k, file_name, count):
 
 
 ## 낙폭 치를 이용한 Rank 계상
-def cal_drawdown_rank(data_dic):
+def cal_bor_drawdown_rank(data_dic):
     print("calculate Rank Start ! : cnt - {}".format(len(data_dic)))
     rank_data_dic = {}
     rank_dic_dic = {}
@@ -271,7 +271,7 @@ def cal_drawdown_rank(data_dic):
     return list(real_rank)
 
 
-def get_universe_drawdown_rank(search_day, rank_cnt):
+def get_universe_bor_drawdown_rank(search_day, rank_cnt):
     # 1. get db data
     sql = "select market, bor_draw_down from " \
           "(select * from {} where bor_start_target < 5000)" \
@@ -285,19 +285,32 @@ def get_universe_drawdown_rank(search_day, rank_cnt):
         data_dic[i] = value
 
     # 2. draw down rank 계산
-    return cal_drawdown_rank(data_dic)[0:rank_cnt]
+    return cal_bor_drawdown_rank(data_dic)[0:rank_cnt]
+
+def get_universe_bor_limit_price(search_day, limit_price):
+    # 1. get db data
+    sql = "select * from {} where bor_start_target < {}".format('universe_{}'.format(search_day),limit_price)
+    cur = execute_sql("bitcoin", sql)
+    curData = cur.fetchall()  # list [('KRW-MTL', '0.0,0.0,0.0,0.0'),...]
+    print("get_universe_bor_list - {}".format(len(curData)))
+    data_list = []
+    for value in curData:
+        data_list.append(value[1])
+    return data_list
+
 
 if __name__ == "__main__":
     # ===== make Data =======#
-    ticker_data = get_ticker("KRW", False, False, True)
+    #ticker_data = get_ticker("KRW", False, False, True)
     #
     # make_universe_for_break_out_range(ticker_data, 0.5, "universe", 7)
     # make_universe_for_break_out_range(ticker_data, 0.5, "universe", 6)
-    make_universe_for_break_out_range(ticker_data, 0.5, "universe", 5)
+    #make_universe_for_break_out_range(ticker_data, 0.5, "universe", 5)
     # make_universe_for_break_out_range(ticker_data, 0.5, "universe", 4)
     # make_universe_for_break_out_range(ticker_data, 0.5, "universe", 3)
     # make_universe_for_break_out_range(ticker_data, 0.5, "universe", 2)
 
     # ===== Simulation ======#
-    ranklist = get_universe_drawdown_rank(5, 5)
-    print(ranklist)
+    #ranklist = get_universe_drawdown_rank(5, 5)
+    get_universe_bor_limit_price(5)
+    #print(ranklist)
