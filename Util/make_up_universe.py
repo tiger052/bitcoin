@@ -264,7 +264,8 @@ def cal_bor_drawdown_rank(data_dic):
             if not data_dic[0] in real_rank:
                 real_rank[data_dic[0]] = data_dic[1]
             else:
-                print("is key {}".format(data_dic[0]))
+                #print("is key {}".format(data_dic[0]))
+                pass
 
     df = pd.DataFrame(list(real_rank))
     print(len(list(real_rank)))
@@ -285,7 +286,9 @@ def get_universe_bor_drawdown_rank(search_day, rank_cnt):
         data_dic[i] = value
 
     # 2. draw down rank 계산
-    return cal_bor_drawdown_rank(data_dic)[0:rank_cnt]
+    data_list = cal_bor_drawdown_rank(data_dic)[0:rank_cnt]
+    print("get_universe_bor_drawdown_list - {}".format(len(data_list)))
+    return data_list
 
 def get_universe_bor_limit_price(search_day, limit_price):
     # 1. get db data

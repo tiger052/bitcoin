@@ -39,7 +39,7 @@ class BreakOutRange(threading.Thread):
         self.targetCoin = ""  # 트레이드 할 Coin
         self.tradeState = TradeState.initialize  # 트레이드 상태
         self.processState = ProcessState.complete  # 처리 상태
-        self.universeType = BreakOutRangeUniverse.limit_price   # Universe Type 설정
+        self.universeType = BreakOutRangeUniverse.drawdown_rank   # Universe Type 설정
 
         # -- 트레이딩 수치값
         self.targetPercent = 0.5  # 변동성 돌파 목표치 비율
@@ -144,22 +144,21 @@ class BreakOutRange(threading.Thread):
         print(">> ticker list - {}, {}".format(len(self.tickerlist), self.tickerlist))
 
     def make_trade_coin_list(self):
+        # 전체 Coin 정보 저장
+        for ticker in self.tickerlist:
+            self.ticker_dic[ticker['market']] = ticker['korean_name']  # KRW-MTL = '메탈'
+            curprice = get_current_price(ticker['market'])
+            time.sleep(0.2)
+            balance = get_balance(self.upbitInst, ticker['market'])
+            if balance > 0:
+                if curprice * balance > 5000:       # 팔수 있는 상태 일경우 만 등록 (5000원 미만은 거래 불가)
+                    self.used_coin_dic[ticker['market']] = balance
+
+        # Trade 할 Coin List
         if self.universeType == BreakOutRangeUniverse.limit_price:
-
-            #전체 Coin 정보 저장
-            for ticker in self.tickerlist:
-                self.ticker_dic[ticker['market']] = ticker['korean_name']              #KRW-MTL = '메탈'
-                curprice = get_current_price(ticker['market'])
-                time.sleep(0.2)
-                balance = get_balance(self.upbitInst, ticker['market'])
-                if balance > 0:
-                    if curprice * balance > 5000:
-                        self.used_coin_dic[ticker['market']] = balance
-
-            # Trade 할 Coin List
             self.trade_coin_list = get_universe_bor_limit_price(5,5000)
         elif self.universeType == BreakOutRangeUniverse.drawdown_rank:
-            pass
+            self.trade_coin_list = get_universe_bor_drawdown_rank(5, 5)
 
         if self.targetCoin is "":
             self.targetCoin = self.trade_coin_list[0]
