@@ -45,6 +45,7 @@ class BreakOutRange(threading.Thread):
         self.targetPercent = 0.5  # 변동성 돌파 목표치 비율
         self.is_init_success = True
         self.tradeVolumeMin = 5000  # 최소 거래 값 - 5000원 이상
+        self.tradeVolumeMax = 10000  # 최대 거래 값 - 10000원
         self.AllowCoinPrice = 5000  # 1 coin 당 최소 코인 가격
         self.feePercent = 0.9995  # 수수료 퍼센트
         self.curCoinIdx = 0  # 현재 코인의 Index
@@ -169,6 +170,8 @@ class BreakOutRange(threading.Thread):
         print(">> current Target Coin - {} : {}".format(self.targetCoin, self.ticker_dic[self.targetCoin]))
         print(">>> Complete Check Coin Info")
 
+        send_message("[{}] 금일 코인 정보 - [{}] , universe type - {}, coin list -{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.tradeState, self.universeType, self.trade_coin_list))
+
     def next_trade_coin(self):
         self.curCoinIdx = self.curCoinIdx + 1
         if self.curCoinIdx > len(self.trade_coin_list) - 1:
@@ -179,16 +182,16 @@ class BreakOutRange(threading.Thread):
         # 3.4 Log 저장 로직
         now = datetime.now()
         if check_one_minute_time():  # 분당 저장
-            saveLog(">> [{}] 분당 보고 - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), text))
+            saveLog(">> [{}] 분당 보고 - [{}] , {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.tradeState, text))
 
         # 하루 마감시 마지막 Log 전송
         if check_last_time():
-            send_message("[{}] 하루 마감 보고 - {}".format(now.strftime('%Y-%m-%d %H:%M:%S'),text))
+            send_message("[{}] 하루 마감 보고 - [{}] , {}".format(now.strftime('%Y-%m-%d %H:%M:%S'),self.tradeState, text))
             saveLog("{}".format(self.show_account_Info()))
 
         # 3.5 정시 정기 보고
         if check_on_time():
-            send_message("[{}] 정시 정기 보고 - {}\n{}".format(now.strftime('%Y-%m-%d %H:%M:%S'), self.show_account_Info(), text))
+            send_message("[{}] 정시 정기 보고 - [{}],{}\n{}".format(now.strftime('%Y-%m-%d %H:%M:%S'),self.tradeState, self.show_account_Info(), text))
             saveLog("{}".format(self.show_account_Info()))
 
     def run(self):
@@ -228,10 +231,16 @@ class BreakOutRange(threading.Thread):
                     current_price = get_current_price(self.targetCoin)  # 현재 값
                     krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
                     unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
+                    # trading max 값 설정
+                    target_krw = 0
+                    if krw > self.tradeVolumeMax:
+                        target_krw = self.tradeVolumeMax
+                    else:
+                        target_krw = krw
 
                     # 3.2 매수 로직 -  당일 9:00 < 현재 < # 명일 8:59:45
                     if check_transaction_open():
-                        if krw > self.tradeVolumeMin:  # 원화가 5000보다 크면
+                        if target_krw > self.tradeVolumeMin:  # 원화가 5000보다 크면
                             if target_price < current_price:  # 목표값 < 현재값 -> 변동성 돌파 조건
                                 if self.isAutoChangeCoin == True:
                                     if current_price > self.AllowCoinPrice:  # 허용 수치 보다 크다면 -> 비싼 가격의 Coin은 제외 하자
@@ -240,7 +249,7 @@ class BreakOutRange(threading.Thread):
                                         time.sleep(1)
                                         continue
                                 # 구매 로직 - 시장가
-                                self.upbitInst.buy_market_order(self.targetCoin,krw * self.feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
+                                self.upbitInst.buy_market_order(self.targetCoin,target_krw * self.feePercent)  # 비트코인 매수 로직 - 수수료 0.0005를 고려해서 0.9995로 지정
                                 self.used_coin_dic[self.targetCoin] = current_price  # 매수 dic에 저장
                                 saveLog(">>[{}] 매수 - KRW :{}, Coin Name :{}, Unit :{}, Target Price :{}, Current Price :{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw,self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                                 send_message("[{}] 매수!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), self.ticker_dic[self.targetCoin], 5000 * self.feePercent))
