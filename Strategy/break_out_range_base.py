@@ -74,7 +74,7 @@ class BreakOutRange(threading.Thread):
         saveLog("{}[{}] - [{} 시작]".format("=========================\n",datetime.now(), self.strategy_name))
         send_message("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
         saveLog("\n[{}] - [TradeState - initialize]".format(datetime.now()))
-        self.init_strategy()
+
 
     # 전략 초기화 기능을 수행하는 함수
     def init_strategy(self):
@@ -203,8 +203,7 @@ class BreakOutRange(threading.Thread):
                     continue
 
                 if self.tradeState == TradeState.initialize:  # 1. 초기화
-                    continue
-
+                    self.init_strategy()
                 elif self.tradeState == TradeState.ready:    # 2. 설정 초기화
                     if check_transaction_open():
                         self.reset_strategy()
@@ -308,6 +307,7 @@ class BreakOutRange(threading.Thread):
                                     self.used_coin_dic.pop(coin)
                                     saveLog("[{}] 매도 - KRW : {}, Coin Name :{}, Unit : {}, Target Price : {}, Current Price : {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),krw, self.ticker_dic[self.targetCoin], unit, target_price, current_price))
                                     send_message("[{}] 매도!!!\n{} - {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),self.ticker_dic[self.targetCoin], unit))
+                                    break;
                         else:
                             self.tradeState = TradeState.complete_sell
                             saveLog(">>거래 완료. 남은 코인 없음\n\n[{}] - [TradeState - complete_sell]".format(datetime.now()))
@@ -322,7 +322,7 @@ class BreakOutRange(threading.Thread):
                         saveLog(">>거래 가능 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
                     else:
                         saveLog(">>거래 종료 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
-                    self.tradeState = TradeState.ready
+                    self.tradeState = TradeState.initialize
 
             except Exception as e:
                 print(traceback.format_exc())
