@@ -111,6 +111,7 @@ class BreakOutRange(threading.Thread):
         saveLog("{}".format(">>> setAccount!"))
         accountInfo = get_account()
         time.sleep(1)
+        self.targetCoin = ""
         for data in accountInfo:
             print(data)
             if data['currency'] == 'BTC' or data['currency'] == 'KRW':
@@ -321,8 +322,8 @@ class BreakOutRange(threading.Thread):
                     if check_transaction_open():
                         saveLog(">>거래 가능 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
                     else:
-                        saveLog(">>거래 종료 시간\n\n[{}] - [TradeState - ready]".format(datetime.now()))
-                    self.tradeState = TradeState.initialize
+                        saveLog(">>거래 종료 시간\n\n[{}] - [TradeState - initialize]".format(datetime.now()))
+                        self.tradeState = TradeState.initialize
 
             except Exception as e:
                 print(traceback.format_exc())
