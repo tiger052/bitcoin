@@ -21,7 +21,7 @@ def check_transaction_open():
 def check_adjacent_transaction_closed():
     """현재 시간이 마감 종료 부근인지 확인하는 함수(매수 시간 확인용)"""
     now = datetime.now()
-    base_time = now.replace(hour=8, minute=51, second=0, microsecond=0)
+    base_time = now.replace(hour=8, minute=46, second=0, microsecond=0)
     end_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
     return base_time <= now < end_time
 
