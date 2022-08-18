@@ -206,12 +206,11 @@ class BreakOutRange(threading.Thread):
                 if self.tradeState == TradeState.initialize:  # 1. 초기화
                     if check_adjacent_transaction_closed():
                         if self.targetCoin == "":
-                            target_price = get_target_price(self.targetCoin, self.targetPercent)  # 목표값 설정
-                            current_price = get_current_price(self.targetCoin)  # 현재 값
-                            krw = get_balance(self.upbitInst, "KRW")  # 원화 조회
-                            unit = get_balance(self.upbitInst, self.targetCoin)  # 보유 코인
-                            self.report_transaction_info("KRW : {}, Coin Name : {}, Unit : {}, Target Price : {}, Current Price : {}".format(krw,self.ticker_dic[self.targetCoin],unit,target_price,current_price))
+                            saveLog(">>초기화 준비 시간. 타겟 코인 없음 - [{}]".format(datetime.now()))
+                        else:
+                            saveLog(">>초기화 준비 시간. 타겟 코인 있음 - [{}]".format(datetime.now()))
                     else:       # 8:46~9:00 는 대기
+                        saveLog(">>초기화 시작 시간. - [{}]".format(datetime.now()))
                         self.init_strategy()
                 elif self.tradeState == TradeState.ready:    # 2. 설정 초기화
                     if check_transaction_open():
