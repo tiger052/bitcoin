@@ -103,6 +103,7 @@ class BreakOutRange(threading.Thread):
 
         self.processState = ProcessState.complete
         self.tradeState = TradeState.wait_for_start
+        clearLog()
         send_message("{}".format(self.show_account_Info()))
         saveLog("{}".format(self.show_account_Info()))
         saveLog(">> 전략 준비 완료.\n\n[{}] - [TradeState - wait_for_start]".format(datetime.now()))
