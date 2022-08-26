@@ -1,5 +1,9 @@
 from enum import Enum
 
+class TradeType(Enum):
+    Live = 0,           # 실제 거래
+    Test = 1            # 모의 거래
+
 class SNSType(Enum):
     Line = 0,
     Telegram = 1
@@ -21,6 +25,7 @@ class BreakOutRangeUniverse(Enum):
     reading = "준비중"
 
 #===== Config Info =====#
+tradeType = TradeType.Live
 snsType = SNSType.Telegram
 
 #=====Upbit Info=====#
