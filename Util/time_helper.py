@@ -1,3 +1,4 @@
+import datetime
 from datetime import *
 
 start_time = datetime.now()
@@ -6,12 +7,17 @@ end_time = datetime.now()
 def init_time_info():
     global start_time, end_time
     now = datetime.now()
+
     if now.hour < 9:       # 오전 9시 이전 이면 새벽 시간에 초기화 -> 시작 시간을 전날로 설정한다.
-        start_time = now.replace(day=now.day-1, hour=9, minute=0, second=0, microsecond=0)
+        prevTime = now + timedelta(days=-1)
+        start_time = now.replace(year=prevTime.year, month=prevTime.month, day=prevTime.day, hour=9, minute=0, second=0, microsecond=0)
         end_time = now.replace(hour=8, minute=45, second=0, microsecond=0)
+        print(str.format(">> init_time_info / prev - now {}, start : {}, end : {}", now, start_time, end_time))
     else:
+        nextTime = now + timedelta(days=1)
         start_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
-        end_time = now.replace(day=now.day+1, hour=8, minute=45, second=0, microsecond=0)
+        end_time = now.replace(year=nextTime.year, month=nextTime.month, day=nextTime.day, hour=8, minute=45, second=0, microsecond=0)
+        print(str.format(">> init_time_info / next- now {}, start : {}, end : {}", now, start_time, end_time))
 
 def check_transaction_open():
     """현재 시간이 거래 시간인지 확인하는 함수 (당일 9:00 ~ 다음날 8:45)"""
@@ -53,4 +59,5 @@ def check_last_time():
     return now.strftime('%H:%M:%S') == "08:59:59"
 
 if __name__ == "__main__":
-    check_adjacent_transaction_closed()
+    #check_adjacent_transaction_closed()
+    init_time_info()
