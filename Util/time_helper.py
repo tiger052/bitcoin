@@ -1,7 +1,8 @@
 from datetime import *
 
-start_time = 0
-end_time = 0
+start_time = datetime.now()
+end_time = datetime.now()
+
 def init_time_info():
     global start_time, end_time
     now = datetime.now()
