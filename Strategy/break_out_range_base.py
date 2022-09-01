@@ -1,6 +1,6 @@
-#########################
-#    변동성 돌파 전략 기본  #
-#########################
+########################
+#    변동성 돌파 전략    #
+########################
 import string
 
 from Util.notifier import *
@@ -31,6 +31,9 @@ class BreakOutRange(threading.Thread):
     def __init__(self):
 
         threading.Thread.__init__(self)
+        # -- check platform
+        self._check_platform()
+
         # -- Login
         self.upbitInst = create_instance()
 
@@ -75,6 +78,8 @@ class BreakOutRange(threading.Thread):
         send_message("{}[{}] - {} 시작".format("=========================\n",datetime.now(), self.strategy_name))
         saveLog("\n[{}] - [TradeState - initialize]".format(datetime.now()))
 
+    def _check_platform(self):  # python 환경 체크
+        print(f">>>> Check Platform\n>> platform : {sys.platform}, api version : {sys.api_version}")
 
     # 전략 초기화 기능을 수행하는 함수
     def init_strategy(self):
