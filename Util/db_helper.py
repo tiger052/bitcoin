@@ -1,5 +1,6 @@
 # db_helper.py #
 import sqlite3
+import pandas as pd
 
 def check_table_exist(db_name, table_name):
     with sqlite3.connect('{}.db'.format(db_name)) as con:
@@ -28,3 +29,8 @@ def execute_sql(db_name, sql, param={}):
         cur = con.cursor()
         cur.execute(sql, param)
         return cur
+
+def execute_sql_to_dataframe(db_name, sql):
+    with sqlite3.connect('{}.db'.format(db_name)) as con:
+        df = pd.read_sql_query(sql, con)
+        return df
