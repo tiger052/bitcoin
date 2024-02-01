@@ -34,7 +34,7 @@ class BreakOutRange(threading.Thread):
         # -- check platform
         self._check_platform()
 
-        # -- Login
+        # -- API 초기화
         self.upbitInst = create_instance()
 
         # -- 트레이드 셋팅
@@ -56,18 +56,12 @@ class BreakOutRange(threading.Thread):
         # -- 시스템설정
         self.isAutoChangeCoin = True  # 자동으로 Coin 변경
 
+        self.universe = {}            # 유니버스 정보를 담을 딕셔너리
+        self.deposit = 0              # 계좌 예수금
+        self.is_init_success = False  # 초기화 함수 성공 여부 확인 변수
 
-        # 유니버스 정보를 담을 딕셔너리
-        self.universe = {}
-
-        # 계좌 예수금
-        self.deposit = 0
-
-        # 초기화 함수 성공 여부 확인 변수
-        self.is_init_success = False
-
-        self.tickerlist = []                                 # Tickers 전체 list
-        self.ticker_dic = {}                                 # Tickers 전체 dic (key : code , value : 한글명 이름)
+        self.tickerlist = []          # Tickers 전체 list
+        self.ticker_dic = {}          # Tickers 전체 dic (key : code , value : 한글명 이름)
         self.trade_coin_list = []  # 거래할 코인 list (코인 최소 가격으로 걸러진 금액)
         self.used_coin_dic = {}  # 매수시 Dictionary에 저장하여 관리 (매도시 사용)
         self.buy_price = 0  # 매수 시 금액
