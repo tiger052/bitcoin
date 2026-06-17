@@ -31,6 +31,7 @@ class DrawdownHoldingStrategy(threading.Thread):
         self.sell_strategy_type = SellStrategyType.TRAILING_STOP_NO_LOSS
         self.portfolio_ratio = 0.1
         self.max_coin_count = 10
+        self.max_buy_amount = 10000.0
         self.trailing_stop_ratio = 0.02
         self.fixed_stop_loss_ratio = -0.03
         self.fee_buffer = 0.0015
@@ -58,6 +59,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                 self.sell_strategy_type = SellStrategyType(config.get("sell_strategy", "TRAILING_STOP_NO_LOSS"))
                 self.portfolio_ratio = float(config.get("portfolio_ratio", 0.1))
                 self.max_coin_count = int(config.get("max_coin_count", 10))
+                self.max_buy_amount = float(config.get("max_buy_amount", 10000.0))
                 self.trailing_stop_ratio = float(config.get("trailing_stop_ratio", 0.02))
                 self.fixed_stop_loss_ratio = float(config.get("fixed_stop_loss_ratio", -0.03))
                 self.fee_buffer = float(config.get("fee_buffer", 0.0015))
@@ -68,6 +70,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                     "sell_strategy": "TRAILING_STOP_NO_LOSS",
                     "portfolio_ratio": 0.1,
                     "max_coin_count": 10,
+                    "max_buy_amount": 10000,
                     "trailing_stop_ratio": 0.02,
                     "fixed_stop_loss_ratio": -0.03,
                     "fee_buffer": 0.0015
@@ -263,8 +266,8 @@ class DrawdownHoldingStrategy(threading.Thread):
 
                 # 5. 매수 감시 (보유 한도 미만이고 원화 잔고가 5000원 이상 있을 때만)
                 if held_count < self.max_coin_count and krw >= 5000:
-                    # 실제 매수할 금액 (원화 잔고와 종목당 설정 예산 중 최소값 선택)
-                    actual_buy_amount = min(buy_budget_per_coin, krw)
+                    # 실제 매수할 금액 (원화 잔고, 종목당 설정 예산, 최대 매수 제한 금액 중 최소값 선택)
+                    actual_buy_amount = min(buy_budget_per_coin, self.max_buy_amount, krw)
                     
                     if actual_buy_amount >= 5000:
                         for ticker in self.universe:

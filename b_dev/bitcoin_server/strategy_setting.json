@@ -3,6 +3,7 @@
   "sell_strategy": "TRAILING_STOP_NO_LOSS",
   "portfolio_ratio": 0.1,
   "max_coin_count": 10,
+  "max_buy_amount": 10000,
   "trailing_stop_ratio": 0.02,
   "fixed_stop_loss_ratio": -0.03,
   "fee_buffer": 0.0015
