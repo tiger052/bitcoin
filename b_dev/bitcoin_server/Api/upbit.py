@@ -11,8 +11,6 @@ import jwt
 from Util.const import *
 from urllib.parse import urlencode, unquote
 
-upbit_path = "Api/upbit_setting.json"  # 토큰 파일 경로
-
 isWindow = True  # 실행 환경 에따른 분기 처리
 upbit_assess = ''
 upbit_secret = ''
@@ -22,16 +20,13 @@ upbit_secret = ''
 # ------------------------#
 def create_instance():
     global upbit_secret, upbit_assess
-    isUpbitFile = os.path.isfile(upbit_path)
-    if isUpbitFile:
-        with open(upbit_path, 'r') as file:
-            dic_upbit = json.load(file)
-        inst = pyupbit.Upbit(dic_upbit['upbit_access'], dic_upbit['upbit_secret'])
-        upbit_assess = dic_upbit['upbit_access']
-        upbit_secret = dic_upbit['upbit_secret']
+    if UPBIT_ACCESS_KEY and UPBIT_SECRET_KEY:
+        inst = pyupbit.Upbit(UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY)
+        upbit_assess = UPBIT_ACCESS_KEY
+        upbit_secret = UPBIT_SECRET_KEY
         return inst
     else:
-        print("Cant load file 'upbit_setting.json.'")
+        print("Cant load credentials from 'secrets.json'.")
         return None
 
 
@@ -149,6 +144,9 @@ def get_yesterday_ma5(ticker):
 # ----------------------------------------------#
 def get_account():
     global upbit_secret, upbit_assess
+    if not upbit_assess or not upbit_secret:
+        upbit_assess = UPBIT_ACCESS_KEY
+        upbit_secret = UPBIT_SECRET_KEY
     server_url = UPBIT_OPEN_API_SERVER_URL
 
     payload = {

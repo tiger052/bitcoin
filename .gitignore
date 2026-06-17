@@ -1,0 +1,9 @@
+# Credentials and Secrets
+b_dev/bitcoin_server/secrets.json
+*upbit_setting.json
+*kakao_setting.json
+
+# Cache and Logs
+__pycache__/
+*.pyc
+b_dev/bitcoin_server/Log/*.log

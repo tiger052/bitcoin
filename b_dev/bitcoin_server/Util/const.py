@@ -34,6 +34,9 @@ class BreakOutRangeUniverse(Enum):
     drawdown_rank = "낙폭 순위 선별"
     reading = "준비중"
 
+import os
+import json
+
 #===== Config Info =====#
 tradeType = TradeType.Live
 snsType = SNSType.Telegram
@@ -41,15 +44,47 @@ snsType = SNSType.Telegram
 #=====Upbit Info=====#
 UPBIT_OPEN_API_SERVER_URL = "https://api.upbit.com"
 
-#=====SNS Info=====#
-#1.Line Token - J1 Stock
-LINE_API_TOKEN = "6WCqsYSHGmv6YO7DTd2bk16uXaVdXCvEUdNsEddqMyf"
-LINE_URL = 'https://notify-api.line.me/api/notify'
+# Global credentials loaded dynamically
+UPBIT_ACCESS_KEY = ""
+UPBIT_SECRET_KEY = ""
+LINE_API_TOKEN = ""
+TELEGRAM_API_TOKEN = ""
+TELEGRAM_CHAT_ID = ""
 
-#2.Telegram - J1 bot
-TELEGRAM_API_TOKEN = "5429809700:AAGuHFBSl9FIHMwdyhjrQAVdpRWHimCy20g"
-TELEGRAM_CHAT_ID = "5457683354"
-#TELEGRAM_URL = str.format("https://api.telegram.org/bot{}/sendmessage?chat_id={}&text=",TELEGRAM_API_TOKEN, TELEGRAM_CHAT_ID)
+def load_secrets():
+    global UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY, LINE_API_TOKEN, TELEGRAM_API_TOKEN, TELEGRAM_CHAT_ID
+    secrets_path = "secrets.json"
+    
+    # Default placeholder config
+    default_secrets = {
+        "upbit_access_key": "YOUR_UPBIT_ACCESS_KEY",
+        "upbit_secret_key": "YOUR_UPBIT_SECRET_KEY",
+        "telegram_api_token": "YOUR_TELEGRAM_API_TOKEN",
+        "telegram_chat_id": "YOUR_TELEGRAM_CHAT_ID",
+        "line_api_token": "YOUR_LINE_API_TOKEN"
+    }
+    
+    try:
+        if os.path.exists(secrets_path):
+            with open(secrets_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            UPBIT_ACCESS_KEY = data.get("upbit_access_key", "")
+            UPBIT_SECRET_KEY = data.get("upbit_secret_key", "")
+            TELEGRAM_API_TOKEN = data.get("telegram_api_token", "")
+            TELEGRAM_CHAT_ID = data.get("telegram_chat_id", "")
+            LINE_API_TOKEN = data.get("line_api_token", "")
+        else:
+            with open(secrets_path, "w", encoding="utf-8") as f:
+                json.dump(default_secrets, f, indent=2)
+            print(">> [Warning] secrets.json not found. Created a default template. Please fill it in.")
+    except Exception as e:
+        print(f">> [Error Loading Secrets] {e}")
+
+# Load credentials immediately
+load_secrets()
+
+#=====SNS Info=====#
+LINE_URL = 'https://notify-api.line.me/api/notify'
 TELEGRAM_URL = "https://api.telegram.org/bot{}/sendmessage?chat_id={}&text={}"
 
 #3.Kakao
