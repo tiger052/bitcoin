@@ -300,7 +300,55 @@ def get_universe_bor_limit_price(search_day, limit_price):
     for value in curData:
         data_list.append(value[1])
     return data_list
-
+def get_high_volume_drawdown_universe(top_n=30, select_count=10):
+    import requests
+    import time
+    try:
+        # 1. Get all KRW tickers
+        tickers = pyupbit.get_tickers(fiat="KRW")
+        if not tickers:
+            return []
+        
+        # 2. Get ticker details (for 24h trade volume)
+        chunk_size = 90
+        ticker_details = []
+        for i in range(0, len(tickers), chunk_size):
+            chunk = tickers[i:i+chunk_size]
+            url = "https://api.upbit.com/v1/ticker"
+            params = {"markets": ",".join(chunk)}
+            res = requests.get(url, params=params).json()
+            if isinstance(res, list):
+                ticker_details.extend(res)
+            time.sleep(0.1)
+            
+        # 3. Sort by 24h trade volume (acc_trade_price_24h) descending
+        ticker_details.sort(key=lambda x: x.get('acc_trade_price_24h', 0), reverse=True)
+        top_tickers = ticker_details[:top_n]
+        
+        # 4. Calculate drawdown from 20-day high for top_n tickers
+        drawdowns = []
+        for item in top_tickers:
+            ticker = item.get('market')
+            if not ticker:
+                continue
+            df = pyupbit.get_ohlcv(ticker, interval="day", count=20)
+            if df is not None and not df.empty:
+                high_20d = df['high'].max()
+                current_price = df.iloc[-1]['close']
+                if high_20d > 0:
+                    dd = (high_20d - current_price) / high_20d
+                    drawdowns.append((ticker, dd))
+            time.sleep(0.15) # sleep slightly to respect rate limit
+            
+        # 5. Sort by drawdown descending
+        drawdowns.sort(key=lambda x: x[1], reverse=True)
+        
+        # 6. Extract the list of tickers
+        selected_universe = [ticker for ticker, dd in drawdowns[:select_count]]
+        return selected_universe
+    except Exception as e:
+        print(f"Error in get_high_volume_drawdown_universe: {e}")
+        return []
 
 if __name__ == "__main__":
     # ===== make Data =======#

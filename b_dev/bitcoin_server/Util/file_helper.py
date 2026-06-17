@@ -1,9 +1,11 @@
+import os
 from Util.const import *
 from Util.notifier import *
 
 def createLog():
     path = "Log/output.log"
     try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             file.write("")
     except Exception as e:
@@ -46,6 +48,9 @@ def loadLog():
         with open(path, 'r') as file:
             doc = file.read()
             return doc
+    except FileNotFoundError:
+        createLog()
+        return ""
     except Exception as e:
         print(e)
         send_message("loadLog : {}".format(e))

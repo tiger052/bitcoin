@@ -8,6 +8,16 @@ class SNSType(Enum):
     Line = 0,
     Telegram = 1
 
+class BuyStrategyType(Enum):
+    MA5_CROSSOVER = "MA5_CROSSOVER"
+    OPEN_BREAKOUT = "OPEN_BREAKOUT"
+    CANDLE_3_GREEN = "CANDLE_3_GREEN"
+
+class SellStrategyType(Enum):
+    HODL_NO_LOSS = "HODL_NO_LOSS"
+    TRAILING_STOP_NO_LOSS = "TRAILING_STOP_NO_LOSS"
+    FIXED_STOP_LOSS = "FIXED_STOP_LOSS"
+
 class ProcessState(Enum):
     processing = "processing"                   # 처리중
     complete = "waiting"                        # 완료

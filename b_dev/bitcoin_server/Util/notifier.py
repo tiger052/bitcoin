@@ -2,10 +2,13 @@ import requests
 from Util.const import *
 
 def send_message(mes):
-    if snsType == SNSType.Line:
-        send_message_line(mes,LINE_API_TOKEN)
-    elif snsType == SNSType.Telegram:
-        send_message_telegram(mes, TELEGRAM_CHAT_ID, TELEGRAM_API_TOKEN)
+    try:
+        if snsType == SNSType.Line:
+            send_message_line(mes,LINE_API_TOKEN)
+        elif snsType == SNSType.Telegram:
+            send_message_telegram(mes, TELEGRAM_CHAT_ID, TELEGRAM_API_TOKEN)
+    except Exception as e:
+        print(f">> [Notification Error] {e}")
 
 """ 
 [Line Bot에 메세지 보내기]
