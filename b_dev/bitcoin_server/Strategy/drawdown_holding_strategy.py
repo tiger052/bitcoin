@@ -43,9 +43,21 @@ class DrawdownHoldingStrategy(threading.Thread):
         
         # 매매 상태 관리
         self.universe = []
+        self.universe_drawdowns = {}
         self.held_coins_max_price = {}  # {ticker: max_price_since_buy}
         self.last_universe_update_date = ""
+        self.last_status_time = 0
+        self.universe_size = 30
+        self.universe_status = {}
         
+        # 티커 한글 이름 로드 및 캐싱
+        self.ticker_names = {}
+        try:
+            tickers = pyupbit.get_tickers(fiat="KRW", is_details=True)
+            self.ticker_names = {item['market']: item['korean_name'] for item in tickers}
+        except Exception as e:
+            saveLog(f">> [티커 이름 로드 에러] {e}")
+            
         saveLog(f"\n=========================\n[{datetime.now()}] - [{self.strategy_name} 시작]")
         send_message(f"[{datetime.now()}] - {self.strategy_name} 시작\n초기 설정: 모드-{self.trade_mode}, 매수-{self.buy_strategy_type.value}, 매도-{self.sell_strategy_type.value}")
 
@@ -66,6 +78,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                 self.trailing_stop_ratio = float(config.get("trailing_stop_ratio", 0.02))
                 self.fixed_stop_loss_ratio = float(config.get("fixed_stop_loss_ratio", -0.03))
                 self.fee_buffer = float(config.get("fee_buffer", 0.0015))
+                self.universe_size = int(config.get("universe_size", 30))
             else:
                 # 기본값 설정 파일 자동 생성
                 default_config = {
@@ -77,7 +90,8 @@ class DrawdownHoldingStrategy(threading.Thread):
                     "max_buy_amount": 10000,
                     "trailing_stop_ratio": 0.02,
                     "fixed_stop_loss_ratio": -0.03,
-                    "fee_buffer": 0.0015
+                    "fee_buffer": 0.0015,
+                    "universe_size": 30
                 }
                 with open(self.config_path, "w", encoding="utf-8") as f:
                     json.dump(default_config, f, indent=2)
@@ -115,42 +129,67 @@ class DrawdownHoldingStrategy(threading.Thread):
         now = datetime.now()
         today_str = now.strftime('%Y-%m-%d')
         
-        # 9시가 지났고, 오늘 날짜로 갱신된 적이 없거나 비어있는 경우
-        if (now.hour >= 9 and self.last_universe_update_date != today_str) or not self.universe:
+        # 9시가 지났고, 오늘 날짜로 갱신된 적이 없거나 비어있는 경우, 또는 설정크기와 실제 크기가 다를 때 즉시 갱신
+        if (now.hour >= 9 and self.last_universe_update_date != today_str) or not self.universe or len(self.universe) != self.universe_size:
             saveLog(f">> [{now}] Universe 갱신 시작...")
             send_message(f"[{now}] Universe 코인 분석 및 갱신 시작...")
             
             # make_up_universe의 거래대금 낙폭 과대 로직 호출
-            new_universe = get_high_volume_drawdown_universe(top_n=30, select_count=10)
+            new_universe = get_high_volume_drawdown_universe(top_n=max(30, self.universe_size * 2), select_count=self.universe_size)
             if new_universe:
                 self.universe = new_universe
                 self.last_universe_update_date = today_str
+                # 유니버스 변경 시 실시간 상태 정보 초기화
+                self.universe_status = {}
+                self.universe_drawdowns = {}
+                # Calculate daily drawdown once to cache it
+                for ticker in self.universe:
+                    try:
+                        df = pyupbit.get_ohlcv(ticker, interval="day", count=20)
+                        if df is not None and not df.empty:
+                            high_20d = df['high'].max()
+                            current_price = df.iloc[-1]['close']
+                            if high_20d > 0:
+                                dd = (high_20d - current_price) / high_20d * 100
+                                self.universe_drawdowns[ticker] = float(dd)
+                        time.sleep(0.1)
+                    except Exception as e:
+                        self.universe_drawdowns[ticker] = 0.0
                 saveLog(f">> [{now}] Universe 갱신 완료: {self.universe}")
                 send_message(f"오늘의 매수 감시 대상 코인 리스트:\n{', '.join(self.universe)}")
             else:
                 saveLog(f">> [{now}] Universe 갱신 실패 (기존 리스트 유지): {self.universe}")
 
     def check_buy_condition(self, ticker):
-        """모듈화된 매수 진입 시점 판정"""
+        """모듈화된 매수 진입 시점 판정 및 실시간 값 기록"""
         try:
             current_price = get_current_price(ticker)
             time.sleep(0.1)
+            
+            ma_val = 0.0
+            open_price = 0.0
+            trigger = False
+            progress_ratio = 0.0
+            signal_desc = ""
             
             # A. 1시간 봉 기준 MA5선 돌파 (디폴트)
             if self.buy_strategy_type == BuyStrategyType.MA5_CROSSOVER:
                 df = pyupbit.get_ohlcv(ticker, interval="minute60", count=6)
                 if df is not None and len(df) >= 5:
-                    ma5 = df['close'].rolling(5).mean().iloc[-1]
-                    if current_price > ma5:
-                        return True
+                    ma_val = float(df['close'].rolling(5).mean().iloc[-1])
+                    trigger = current_price > ma_val
+                    progress_ratio = (current_price / ma_val - 1.0) * 100 if ma_val > 0 else 0.0
+                    signal_desc = f"현재 {current_price:.1f} / MA5 {ma_val:.1f}"
             
             # B. 당일 시가 대비 +1.5% 상승 돌파
             elif self.buy_strategy_type == BuyStrategyType.OPEN_BREAKOUT:
                 df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
                 if df is not None and not df.empty:
-                    open_price = df.iloc[0]['open']
-                    if current_price >= open_price * 1.015:
-                        return True
+                    open_price = float(df.iloc[0]['open'])
+                    target_price = open_price * 1.015
+                    trigger = current_price >= target_price
+                    progress_ratio = (current_price / target_price - 1.0) * 100 if target_price > 0 else 0.0
+                    signal_desc = f"현재 {current_price:.1f} / 시가 {open_price:.1f} (+1.5% 목표: {target_price:.1f})"
             
             # C. 15분 봉 기준 3연속 양봉
             elif self.buy_strategy_type == BuyStrategyType.CANDLE_3_GREEN:
@@ -160,8 +199,21 @@ class DrawdownHoldingStrategy(threading.Thread):
                     c2 = df.iloc[-3]['close'] > df.iloc[-3]['open']
                     c3 = df.iloc[-2]['close'] > df.iloc[-2]['open']
                     c_now = current_price > df.iloc[-1]['open']
-                    if c1 and c2 and c3 and c_now:
-                        return True
+                    trigger = c1 and c2 and c3 and c_now
+                    
+                    green_cnt = sum([c1, c2, c3, c_now])
+                    progress_ratio = (green_cnt / 4.0) * 100
+                    signal_desc = f"양봉 조건 충족: {green_cnt}/4개 완료"
+            
+            # 상태 기록 업데이트
+            self.universe_status[ticker] = {
+                "current_price": current_price,
+                "progress_ratio": progress_ratio,
+                "signal_desc": signal_desc,
+                "is_triggered": trigger
+            }
+            
+            return trigger
                         
         except Exception as e:
             saveLog(f">> [매수 판정 에러] {ticker}: {e}")
@@ -195,8 +247,8 @@ class DrawdownHoldingStrategy(threading.Thread):
             
             max_price = self.held_coins_max_price[ticker]
 
-            # 2. 트레일링 익절 보존 (TRAILING_STOP_NO_LOSS) - 최고점 대비 특정 비율 하락 시 매도
-            if self.sell_strategy_type == SellStrategyType.TRAILING_STOP_NO_LOSS:
+            # 2. 트레일링 익절 보존 (TRAILING_STOP_NO_LOSS / FIXED_STOP_LOSS) - 최고점 대비 특정 비율 하락 시 매도
+            if self.sell_strategy_type in [SellStrategyType.TRAILING_STOP_NO_LOSS, SellStrategyType.FIXED_STOP_LOSS]:
                 trailing_trigger_price = max_price * (1.0 - self.trailing_stop_ratio)
                 
                 # 최고점 대비 하락하였고, 그 하락한 가격도 여전히 손익분기점 이상인 안전 영역일 때만 매도
@@ -341,6 +393,10 @@ class DrawdownHoldingStrategy(threading.Thread):
                                 
                             # 매수 신호 판정
                             if self.check_buy_condition(ticker):
+                                # 진입 시점의 현재가 갱신
+                                current_price = get_current_price(ticker)
+                                time.sleep(0.1)
+                                
                                 # 매수 집행 분기
                                 if self.trade_mode == "TEST":
                                     # 모의 투자 매수 시뮬레이션
@@ -363,8 +419,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                                     # 실거래 매수 주문
                                     saveLog(f">> [매수 집행] {ticker} 시장가 매수 진행 (금액: {actual_buy_amount})")
                                     self.upbitInst.buy_market_order(ticker, actual_buy_amount * 0.9995)
-                                    cur_price = get_current_price(ticker)
-                                    send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [실제] 매수 완료!!!\n코인: {ticker}\n매수 금액: {actual_buy_amount:.2f}원 (체결가: {cur_price:.2f})")
+                                    send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [실제] 매수 완료!!!\n코인: {ticker}\n매수 금액: {actual_buy_amount:.2f}원 (체결가: {current_price:.2f})")
                                 
                                 # 매수한 코인의 최고가 트래킹 초기화
                                 self.held_coins_max_price[ticker] = current_price
@@ -374,7 +429,9 @@ class DrawdownHoldingStrategy(threading.Thread):
                                 break
 
                 # 매 루프 후 출력할 모니터링 로그 (1분 단위 저장)
-                if check_one_minute_time():
+                current_timestamp = time.time()
+                if current_timestamp - self.last_status_time >= 60:
+                    self.last_status_time = current_timestamp
                     mode_label = "[모의 투자]" if self.trade_mode == "TEST" else "[실거래]"
                     status_text = f"{mode_label} 자산 총액: {total_assets:.2f}원 | 원화 잔고: {krw:.2f}원 | 보유 종목 수: {held_count}/{self.max_coin_count}\n"
                     status_text += f"현재 설정: 매수-{self.buy_strategy_type.value}, 매도-{self.sell_strategy_type.value}"
@@ -389,6 +446,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                 time.sleep(10)
                 
             except Exception as e:
-                print(traceback.format_exc())
+                err_msg = traceback.format_exc()
+                saveLog(f">> [루프 에러 발생]\n{err_msg}")
                 send_message(f"[에러 알림] {self.strategy_name} 루프 예외 발생:\n{e}")
                 time.sleep(10)

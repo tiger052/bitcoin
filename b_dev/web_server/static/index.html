@@ -374,7 +374,10 @@
             <!-- Asset Cards Grid -->
             <div class="asset-grid">
                 <div class="asset-box">
-                    <div class="asset-label">총 평가 자산</div>
+                    <div class="asset-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>총 평가 자산</span>
+                        <span id="overallReturnRate" style="font-size: 0.8rem; font-weight: 600;"></span>
+                    </div>
                     <div class="asset-value" id="totalAssets">0원</div>
                 </div>
                 <div class="asset-box">
@@ -386,6 +389,19 @@
             <!-- Positions Card -->
             <div class="card">
                 <div class="card-title">현재 보유 종목</div>
+                
+                <!-- Macro Summary Bar -->
+                <div id="macroSummaryBar" style="display: none; gap: 0.5rem; margin-bottom: 1.2rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 0.8rem 1.2rem; border-radius: 12px; align-items: center; justify-content: space-between;">
+                    <div style="display:flex; gap: 1.5rem; font-size: 0.85rem;">
+                        <div>🔥 수익 종목: <span class="pos-plus" id="profitCount" style="font-weight: 700;">0</span>개</div>
+                        <div>⚪ 본전 종목: <span id="evenCount" style="color:var(--text-secondary); font-weight:700;">0</span>개</div>
+                        <div>❄️ 손실 종목: <span class="pos-minus" id="lossCount" style="font-weight: 700;">0</span>개</div>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary);">
+                        평단 대비 평균 변동률: <span id="avgPLRate" style="font-weight:700;">0.00%</span>
+                    </div>
+                </div>
+
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
@@ -395,12 +411,13 @@
                                 <th>매수평단</th>
                                 <th>현재가</th>
                                 <th>평가금액</th>
-                                <th>수익률</th>
+                                <th>수익률 (평가손익)</th>
+                                <th style="min-width: 170px;">진행 상태</th>
                             </tr>
                         </thead>
                         <tbody id="positionsTableBody">
                             <tr>
-                                <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td>
+                                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -455,8 +472,13 @@
                             <label for="fixedStopLossRatio">지정 손절 기준 (비율)</label>
                             <input type="number" id="fixedStopLossRatio" step="0.005" max="-0.005">
                         </div>
-                        <div class="form-group-full">
-                            <button type="submit" class="btn-submit">전략 설정 저장 및 동적 반영</button>
+                        <div class="form-group">
+                            <label for="universeSize">매수 후보군 풀(Pool) 크기</label>
+                            <input type="number" id="universeSize" min="5" max="50">
+                        </div>
+                        <div class="form-group-full" style="display: flex; gap: 1rem;">
+                            <button type="submit" class="btn-submit" style="flex: 2;">전략 설정 저장 및 동적 반영</button>
+                            <button type="button" id="resetTestBtn" class="btn-logout" style="flex: 1; margin-top: 1rem; padding: 0.8rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger-color); font-weight:600;">모의 잔고 리셋</button>
                         </div>
                     </div>
                 </form>
@@ -520,31 +542,106 @@
                 document.getElementById('totalAssets').innerText = formatKRW(data.total_assets);
                 document.getElementById('krwBalance').innerText = formatKRW(data.krw);
                 
+                const overallRateEl = document.getElementById('overallReturnRate');
+                if (data.trade_mode === 'TEST') {
+                    // 모의 투자 총 수익률 계산 (원금 1,000,000 기준)
+                    const profitRate = ((data.total_assets / 1000000.0) - 1.0) * 100;
+                    const rSign = profitRate >= 0 ? '+' : '';
+                    const rClass = profitRate >= 0 ? 'pos-plus' : 'pos-minus';
+                    overallRateEl.innerText = `수익률: ${rSign}${profitRate.toFixed(2)}%`;
+                    overallRateEl.className = rClass;
+                } else {
+                    overallRateEl.innerText = '실거래 계좌';
+                    overallRateEl.className = 'pos-plus';
+                }
+                
                 // 3. 보유 종목 리스트 테이블 렌더링
                 const tableBody = document.getElementById('positionsTableBody');
-                const coins = Object.keys(data.balances);
+                const coins = Object.keys(data.balances || {});
+                const summaryBar = document.getElementById('macroSummaryBar');
                 
                 if (coins.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td></tr>`;
+                    summaryBar.style.display = 'none';
+                    tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td></tr>`;
                 } else {
+                    summaryBar.style.display = 'flex';
+                    
+                    let profitCount = 0;
+                    let evenCount = 0;
+                    let lossCount = 0;
+                    let totalRatioSum = 0;
+                    
+                    const stopLossLimit = data.fixed_stop_loss_ratio * 100;
+                    const profitLimit = data.trailing_stop_ratio * 100;
+                    
                     tableBody.innerHTML = coins.map(coin => {
                         const info = data.balances[coin];
                         const diff = info.current_price - info.avg_buy_price;
                         const ratio = (diff / info.avg_buy_price) * 100;
-                        const plClass = ratio >= 0 ? 'pos-plus' : 'pos-minus';
+                        const totalPLAmount = diff * info.balance;
+                        const plClass = ratio >= 0.05 ? 'pos-plus' : (ratio < -0.05 ? 'pos-minus' : '');
                         const prefix = ratio >= 0 ? '+' : '';
+                        
+                        // 집계 계산
+                        if (ratio > 0.05) profitCount++;
+                        else if (ratio < -0.05) lossCount++;
+                        else evenCount++;
+                        totalRatioSum += ratio;
+                        
+                        const kName = (data.ticker_names && data.ticker_names[coin]) ? data.ticker_names[coin] : '';
+                        const displayName = kName ? `${coin}<br><span style="font-size:0.75rem; font-weight: normal; color: var(--text-secondary);">${kName}</span>` : coin;
+                        
+                        // 진행 바 백분율 계산
+                        let percent = 50;
+                        if (ratio >= 0) {
+                            percent = 50 + (ratio / (profitLimit || 3.0)) * 50;
+                        } else {
+                            percent = 50 + (ratio / Math.abs(stopLossLimit || -3.0)) * 50;
+                        }
+                        percent = Math.max(0, Math.min(100, percent));
+                        const plColorCode = ratio > 0.05 ? '#10b981' : (ratio < -0.05 ? '#ef4444' : '#94a3b8');
+                        
+                        const stopLossPrice = info.avg_buy_price * (1.0 + data.fixed_stop_loss_ratio);
+                        const profitPrice = info.avg_buy_price * (1.0 + data.trailing_stop_ratio);
                         
                         return `
                             <tr>
-                                <td style="font-weight: 600;">${coin}</td>
-                                <td>${info.balance.toFixed(6)}</td>
-                                <td>${formatKRW(info.avg_buy_price)}</td>
-                                <td>${formatKRW(info.current_price)}</td>
-                                <td>${formatKRW(info.value)}</td>
-                                <td class="${plClass}">${prefix}${ratio.toFixed(2)}%</td>
+                                <td style="font-weight: 600; vertical-align: middle;">${displayName}</td>
+                                <td style="vertical-align: middle;">${info.balance.toFixed(6)}</td>
+                                <td style="vertical-align: middle;">${formatKRW(info.avg_buy_price)}</td>
+                                <td style="vertical-align: middle;">${formatKRW(info.current_price)}</td>
+                                <td style="vertical-align: middle;">${formatKRW(info.value)}</td>
+                                <td class="${plClass}" style="vertical-align: middle; font-weight: 600;">
+                                    ${prefix}${ratio.toFixed(2)}%<br>
+                                    <span style="font-size: 0.75rem; font-weight: 500;">${prefix}${formatKRW(totalPLAmount)}</span>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary); gap: 0.3rem;">
+                                            <span style="color: var(--danger-color); font-weight: 500;">손절: ${formatKRW(stopLossPrice)}</span>
+                                            <span>평단</span>
+                                            <span style="color: var(--success-color); font-weight: 500;">목표: ${formatKRW(profitPrice)}</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-top:2px;">
+                                            <div style="position: absolute; left: 50%; width: 1px; height: 100%; background: rgba(255,255,255,0.3);"></div>
+                                            <div style="position: absolute; left: ${percent}%; width: 10px; height: 10px; border-radius: 50%; background: ${plColorCode}; top: -3px; transform: translateX(-50%); box-shadow: 0 0 6px ${plColorCode};"></div>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                         `;
                     }).join('');
+                    
+                    // 매크로 요약 위젯 데이터 주입
+                    document.getElementById('profitCount').innerText = profitCount;
+                    document.getElementById('evenCount').innerText = evenCount;
+                    document.getElementById('lossCount').innerText = lossCount;
+                    
+                    const avgPLRate = totalRatioSum / coins.length;
+                    const avgPLRateEl = document.getElementById('avgPLRate');
+                    const avgSign = avgPLRate >= 0 ? '+' : '';
+                    avgPLRateEl.innerText = `${avgSign}${avgPLRate.toFixed(2)}%`;
+                    avgPLRateEl.className = avgPLRate >= 0.05 ? 'pos-plus' : (avgPLRate < -0.05 ? 'pos-minus' : '');
                 }
                 
                 // 4. 오늘의 매수 감시 후보 리스트
@@ -552,12 +649,50 @@
                 if (!data.universe || data.universe.length === 0) {
                     uniList.innerHTML = `<li style="color: var(--text-secondary); padding: 0.5rem; text-align:center;">조건을 검색 중입니다.</li>`;
                 } else {
-                    uniList.innerHTML = data.universe.map((coin, index) => `
-                        <li class="watchlist-li">
-                            <span class="watchlist-rank">${index + 1}</span>
-                            <span class="watchlist-name">${coin}</span>
-                        </li>
-                    `).join('');
+                    uniList.innerHTML = data.universe.map((coin, index) => {
+                        const status = (data.universe_status && data.universe_status[coin]) ? data.universe_status[coin] : null;
+                        let detailText = "대기 중...";
+                        let badgeClass = "pos-minus";
+                        let triggerBadge = "";
+                        
+                        const kName = (data.ticker_names && data.ticker_names[coin]) ? data.ticker_names[coin] : '';
+                        const nameDisplay = kName ? `${coin} <span style="font-size:0.75rem; font-weight: normal; color: var(--text-secondary);">(${kName})</span>` : coin;
+                        
+                        // 20일 고점 대비 낙폭 구하기
+                        const drawdown = (data.universe_drawdowns && data.universe_drawdowns[coin] !== undefined) ? data.universe_drawdowns[coin] : null;
+                        const ddText = drawdown !== null ? `<span class="pos-minus" style="font-size: 0.7rem; font-weight: 500; margin-left: 0.4rem;">최근 낙폭: -${drawdown.toFixed(1)}%</span>` : '';
+                        
+                        if (status) {
+                            detailText = status.signal_desc;
+                            if (status.is_triggered) {
+                                badgeClass = "pos-plus";
+                                triggerBadge = ` <span class="badge badge-live" style="padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 0.4rem;">진입!</span>`;
+                            } else {
+                                badgeClass = status.progress_ratio >= 0 ? "pos-plus" : "pos-minus";
+                            }
+                            const sign = status.progress_ratio >= 0 ? "+" : "";
+                            detailText += ` (${sign}${status.progress_ratio.toFixed(1)}%)`;
+                        }
+                        
+                        return `
+                            <li class="watchlist-li" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.6rem 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                    <div>
+                                        <span class="watchlist-rank">${index + 1}</span>
+                                        <span class="watchlist-name" style="font-weight:600;">${nameDisplay}</span>
+                                        ${triggerBadge}
+                                    </div>
+                                    <span class="${badgeClass}" style="font-size:0.85rem; font-family: 'Fira Code', monospace; font-weight: 600;">
+                                        ${status ? formatKRW(status.current_price) : '...'}
+                                    </span>
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; width: 100%; font-size:0.75rem; color: var(--text-secondary); padding-left: 2.2rem; line-height: 1.2; margin-top: 0.1rem;">
+                                    <span>${detailText}</span>
+                                    ${ddText}
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
                 }
                 
                 // 5. 실시간 블랙 로그 터미널 업데이트
@@ -578,6 +713,7 @@
                     document.getElementById('maxBuyAmount').value = data.max_buy_amount;
                     document.getElementById('trailingStopRatio').value = data.trailing_stop_ratio;
                     document.getElementById('fixedStopLossRatio').value = data.fixed_stop_loss_ratio;
+                    document.getElementById('universeSize').value = data.universe_size || 30;
                     
                     isConfigLoaded = true;
                 }
@@ -600,6 +736,7 @@
                 max_buy_amount: parseFloat(document.getElementById('maxBuyAmount').value),
                 trailing_stop_ratio: parseFloat(document.getElementById('trailingStopRatio').value),
                 fixed_stop_loss_ratio: parseFloat(document.getElementById('fixedStopLossRatio').value),
+                universe_size: parseInt(document.getElementById('universeSize').value),
                 // 기본 보존 값들 유지
                 fee_buffer: 0.0015
             };
@@ -630,6 +767,23 @@
                 toast.classList.remove('visible');
             }, 3000);
         }
+
+        // 모의 잔고 초기화 처리
+        document.getElementById('resetTestBtn').addEventListener('click', async () => {
+            if (confirm("정말로 모의투자 잔고를 1,000,000원으로 초기화하시겠습니까? (보유하고 있는 모든 모의 주식도 매도 처리됩니다.)")) {
+                try {
+                    const res = await fetch('/api/reset_test', { method: 'POST' });
+                    if (res.ok) {
+                        alert("모의투자 자산이 성공적으로 초기화되었습니다.");
+                        fetchStatus();
+                    } else {
+                        alert("초기화 처리에 실패했습니다.");
+                    }
+                } catch (err) {
+                    alert("서버 연결에 실패했습니다.");
+                }
+            }
+        });
 
         // 안전 로그아웃 처리
         document.getElementById('logoutBtn').addEventListener('click', async () => {

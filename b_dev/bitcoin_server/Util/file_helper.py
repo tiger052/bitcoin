@@ -6,7 +6,7 @@ def createLog():
     path = "Log/output.log"
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
+        with open(path, 'w', encoding='utf-8') as file:
             file.write("")
     except Exception as e:
         print(e)
@@ -16,7 +16,7 @@ def clearLog():
     path = "Log/output.log"
     try:
         txt = loadLog()
-        with open(path, 'w') as file:
+        with open(path, 'w', encoding='utf-8') as file:
             file.write("")
     except Exception as e:
         print(e)
@@ -32,10 +32,10 @@ def saveLog(text):
             return
         print(text)
         if len(txt) == 0:
-            with open(path, 'w') as file:
+            with open(path, 'w', encoding='utf-8') as file:
                 file.write("{}".format(text))
         else:
-            with open(path, 'w') as file:
+            with open(path, 'w', encoding='utf-8') as file:
                 file.write("{}{}".format(txt, "\n" + text))
 
     except Exception as e:
@@ -45,7 +45,7 @@ def saveLog(text):
 def loadLog():
     path = "Log/output.log"
     try:
-        with open(path, 'r') as file:
+        with open(path, 'r', encoding='utf-8') as file:
             doc = file.read()
             return doc
     except FileNotFoundError:

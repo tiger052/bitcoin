@@ -323,7 +323,10 @@ def get_high_volume_drawdown_universe(top_n=30, select_count=10):
             
         # 3. Sort by 24h trade volume (acc_trade_price_24h) descending
         ticker_details.sort(key=lambda x: x.get('acc_trade_price_24h', 0), reverse=True)
-        top_tickers = ticker_details[:top_n]
+        
+        # 투자유의 종목(CAUTION 등) 필터링하여 상장 폐지 위험 종목 원천 배제
+        filtered_details = [item for item in ticker_details if item.get('market_warning', 'NONE') == 'NONE']
+        top_tickers = filtered_details[:top_n]
         
         # 4. Calculate drawdown from 20-day high for top_n tickers
         drawdowns = []

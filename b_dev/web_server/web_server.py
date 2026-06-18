@@ -40,6 +40,7 @@ class ConfigRequest(BaseModel):
     trailing_stop_ratio: float
     fixed_stop_loss_ratio: float
     fee_buffer: float
+    universe_size: int
 
 def load_web_credentials():
     """secrets.json에서 웹 로그인용 아이디/비밀번호 로드"""
@@ -109,7 +110,7 @@ def get_status(user: str = Depends(get_current_user)):
         log_path = os.path.join(project_root, "bitcoin_server", "Log", "output.log")
         logs = []
         if os.path.exists(log_path):
-            with open(log_path, "r", encoding="utf-8") as f:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
                 lines = f.readlines()
                 # 최신 15줄 필터링하여 리스트업
                 logs = [line.strip() for line in lines[-25:] if line.strip()]
@@ -122,6 +123,10 @@ def get_status(user: str = Depends(get_current_user)):
             "total_assets": total_assets,
             "balances": balances,
             "universe": strategy_instance.universe,
+            "universe_status": strategy_instance.universe_status,
+            "universe_size": strategy_instance.universe_size,
+            "ticker_names": getattr(strategy_instance, "ticker_names", {}),
+            "universe_drawdowns": getattr(strategy_instance, "universe_drawdowns", {}),
             "max_buy_amount": strategy_instance.max_buy_amount,
             "max_coin_count": strategy_instance.max_coin_count,
             "portfolio_ratio": strategy_instance.portfolio_ratio,
@@ -148,12 +153,39 @@ def update_config(config_data: ConfigRequest, user: str = Depends(get_current_us
             "max_buy_amount": config_data.max_buy_amount,
             "trailing_stop_ratio": config_data.trailing_stop_ratio,
             "fixed_stop_loss_ratio": config_data.fixed_stop_loss_ratio,
-            "fee_buffer": config_data.fee_buffer
+            "fee_buffer": config_data.fee_buffer,
+            "universe_size": config_data.universe_size
         }
         
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(new_config, f, indent=2)
             
         return {"status": "success", "message": "Configuration updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/reset_test")
+def reset_test(user: str = Depends(get_current_user)):
+    """가상 자산(모의 투자) 잔고를 100만 원으로 초기화"""
+    if strategy_instance is None:
+        raise HTTPException(status_code=500, detail="Trading engine is not running")
+        
+    try:
+        # 가상 계좌 초기화 데이터 구성
+        acc = {
+            "virtual_krw": 1000000.0,
+            "virtual_balances": {}
+        }
+        strategy_instance.save_virtual_account(acc)
+        # 봇의 최고가 트래킹 정보도 함께 리셋
+        strategy_instance.held_coins_max_price = {}
+        
+        # 비동기적으로 저장 로그 호출
+        import sys
+        sys.path.append(os.path.join(project_root, "bitcoin_server"))
+        from Util.file_helper import saveLog
+        saveLog(f">> [가상 자산 초기화] 사용자가 대시보드에서 모의 투자 잔고를 초기화했습니다.")
+        
+        return {"status": "success", "message": "Virtual account reset successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
