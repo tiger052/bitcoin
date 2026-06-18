@@ -25,8 +25,10 @@ class DrawdownHoldingStrategy(threading.Thread):
         # API 및 파일 설정
         self.upbitInst = create_instance()
         self.config_path = "strategy_setting.json"
+        self.virtual_account_path = "virtual_account.json"
         
         # 동적 설정 매개변수 초기값
+        self.trade_mode = "TEST"
         self.buy_strategy_type = BuyStrategyType.MA5_CROSSOVER
         self.sell_strategy_type = SellStrategyType.TRAILING_STOP_NO_LOSS
         self.portfolio_ratio = 0.1
@@ -45,7 +47,7 @@ class DrawdownHoldingStrategy(threading.Thread):
         self.last_universe_update_date = ""
         
         saveLog(f"\n=========================\n[{datetime.now()}] - [{self.strategy_name} 시작]")
-        send_message(f"[{datetime.now()}] - {self.strategy_name} 시작\n초기 설정: 매수-{self.buy_strategy_type.value}, 매도-{self.sell_strategy_type.value}")
+        send_message(f"[{datetime.now()}] - {self.strategy_name} 시작\n초기 설정: 모드-{self.trade_mode}, 매수-{self.buy_strategy_type.value}, 매도-{self.sell_strategy_type.value}")
 
     def load_settings(self):
         """strategy_setting.json 설정 파일을 동적으로 파싱하여 변수에 반영"""
@@ -55,6 +57,7 @@ class DrawdownHoldingStrategy(threading.Thread):
                     config = json.load(f)
                 
                 # Enum 변환 및 파라미터 업데이트
+                self.trade_mode = config.get("trade_mode", "TEST")
                 self.buy_strategy_type = BuyStrategyType(config.get("buy_strategy", "MA5_CROSSOVER"))
                 self.sell_strategy_type = SellStrategyType(config.get("sell_strategy", "TRAILING_STOP_NO_LOSS"))
                 self.portfolio_ratio = float(config.get("portfolio_ratio", 0.1))
@@ -66,6 +69,7 @@ class DrawdownHoldingStrategy(threading.Thread):
             else:
                 # 기본값 설정 파일 자동 생성
                 default_config = {
+                    "trade_mode": "TEST",
                     "buy_strategy": "MA5_CROSSOVER",
                     "sell_strategy": "TRAILING_STOP_NO_LOSS",
                     "portfolio_ratio": 0.1,
@@ -79,6 +83,32 @@ class DrawdownHoldingStrategy(threading.Thread):
                     json.dump(default_config, f, indent=2)
         except Exception as e:
             saveLog(f">> [설정 로드 에러] {e}")
+
+    def load_virtual_account(self):
+        """가상 잔고 파일 로드"""
+        try:
+            if os.path.exists(self.virtual_account_path):
+                with open(self.virtual_account_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            else:
+                default_acc = {
+                    "virtual_krw": 1000000.0,
+                    "virtual_balances": {}
+                }
+                with open(self.virtual_account_path, "w", encoding="utf-8") as f:
+                    json.dump(default_acc, f, indent=2)
+                return default_acc
+        except Exception as e:
+            saveLog(f">> [가상 계좌 로드 에러] {e}")
+            return {"virtual_krw": 1000000.0, "virtual_balances": {}}
+
+    def save_virtual_account(self, data):
+        """가상 잔고 파일 저장"""
+        try:
+            with open(self.virtual_account_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            saveLog(f">> [가상 계좌 저장 에러] {e}")
 
     def update_universe_daily(self):
         """매일 아침 9시 이후 거래대금 상위 30개 중 낙폭 과대 10개 코인 Universe 갱신"""
@@ -184,31 +214,22 @@ class DrawdownHoldingStrategy(threading.Thread):
         return False
 
     def get_account_balances(self):
-        """계좌 정보 조회 및 보유 자산 계산"""
+        """계좌 정보 조회 및 보유 자산 계산 (모의/실거래 모드 분기)"""
         balances = {}
         krw = 0.0
         total_assets = 0.0
         
         try:
-            account_info = get_account()
-            time.sleep(0.2)
-            
-            if not isinstance(account_info, list):
-                saveLog(f">> [계좌 조회 오류] Upbit 응답 에러: {account_info}")
-                return krw, total_assets, balances
+            if self.trade_mode == "TEST":
+                # 모의 투자: 가상 잔고 파일에서 로딩
+                acc = self.load_virtual_account()
+                krw = float(acc.get("virtual_krw", 1000000.0))
+                total_assets = krw
                 
-            for asset in account_info:
-                currency = asset.get('currency')
-                unit_currency = asset.get('unit_currency')
-                balance = float(asset.get('balance', 0))
-                avg_buy_price = float(asset.get('avg_buy_price', 0))
-                
-                if currency == 'KRW':
-                    krw = balance
-                    total_assets += krw
-                else:
-                    ticker = f"{unit_currency}-{currency}"
-                    # 보유 코인의 현재 평가 금액 계산
+                virtual_balances = acc.get("virtual_balances", {})
+                for ticker, info in virtual_balances.items():
+                    balance = float(info.get('balance', 0))
+                    avg_buy_price = float(info.get('avg_buy_price', 0))
                     cur_price = get_current_price(ticker)
                     time.sleep(0.1)
                     val = balance * cur_price
@@ -219,6 +240,36 @@ class DrawdownHoldingStrategy(threading.Thread):
                         'current_price': cur_price,
                         'value': val
                     }
+            else:
+                # 실거래: 업비트 거래소 API 호출
+                account_info = get_account()
+                time.sleep(0.2)
+                
+                if not isinstance(account_info, list):
+                    saveLog(f">> [계좌 조회 오류] Upbit 응답 에러: {account_info}")
+                    return krw, total_assets, balances
+                    
+                for asset in account_info:
+                    currency = asset.get('currency')
+                    unit_currency = asset.get('unit_currency')
+                    balance = float(asset.get('balance', 0))
+                    avg_buy_price = float(asset.get('avg_buy_price', 0))
+                    
+                    if currency == 'KRW':
+                        krw = balance
+                        total_assets += krw
+                    else:
+                        ticker = f"{unit_currency}-{currency}"
+                        cur_price = get_current_price(ticker)
+                        time.sleep(0.1)
+                        val = balance * cur_price
+                        total_assets += val
+                        balances[ticker] = {
+                            'balance': balance,
+                            'avg_buy_price': avg_buy_price,
+                            'current_price': cur_price,
+                            'value': val
+                        }
         except Exception as e:
             saveLog(f">> [계좌 조회 에러] {e}")
             
@@ -251,16 +302,29 @@ class DrawdownHoldingStrategy(threading.Thread):
                     current_price = info['current_price']
                     
                     if self.check_sell_condition(ticker, avg_buy_price, current_price):
-                        # 매도 주문 집행
-                        saveLog(f">> [매도 집행] {ticker} 전량 매도 진행 (수량: {info['balance']}, 현재가: {current_price})")
-                        self.upbitInst.sell_market_order(ticker, info['balance'])
-                        send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 매도 완료!!!\n코인: {ticker}\n평단가: {avg_buy_price:.2f} -> 매도가: {current_price:.2f}")
+                        # 매도 집행 분기
+                        if self.trade_mode == "TEST":
+                            # 모의 투자 매도 시뮬레이션
+                            acc = self.load_virtual_account()
+                            sell_val = info['balance'] * current_price
+                            # 매도 수수료 0.05% 차감 반영
+                            acc["virtual_krw"] = acc.get("virtual_krw", 0.0) + (sell_val * 0.9995)
+                            acc["virtual_balances"].pop(ticker, None)
+                            self.save_virtual_account(acc)
+                            
+                            saveLog(f">> [가상 매도 집행] {ticker} 전량 매도 완료 (수량: {info['balance']:.6f}, 매도가: {current_price})")
+                            send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [모의] 매도 완료!!!\n코인: {ticker}\n평단가: {avg_buy_price:.2f} -> 매도가: {current_price:.2f}")
+                        else:
+                            # 실거래 매도 주문
+                            saveLog(f">> [매도 집행] {ticker} 전량 매도 진행 (수량: {info['balance']}, 현재가: {current_price})")
+                            self.upbitInst.sell_market_order(ticker, info['balance'])
+                            send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [실제] 매도 완료!!!\n코인: {ticker}\n평단가: {avg_buy_price:.2f} -> 매도가: {current_price:.2f}")
                         
                         # 트래킹 데이터 삭제
                         if ticker in self.held_coins_max_price:
                             del self.held_coins_max_price[ticker]
                         
-                        # 매도 처리 후 계좌 업데이트를 위해 잠시 대기 및 루프 재시작
+                        # 매도 처리 후 즉시 계좌 정보 재반영을 위해 루프 재시작
                         time.sleep(1)
                         break
 
@@ -277,22 +341,42 @@ class DrawdownHoldingStrategy(threading.Thread):
                                 
                             # 매수 신호 판정
                             if self.check_buy_condition(ticker):
-                                saveLog(f">> [매수 집행] {ticker} 시장가 매수 진행 (금액: {actual_buy_amount})")
-                                # 수수료 버퍼를 고려하여 주문 금액 설정
-                                self.upbitInst.buy_market_order(ticker, actual_buy_amount * 0.9995)
-                                cur_price = get_current_price(ticker)
-                                send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 매수 완료!!!\n코인: {ticker}\n매수 금액: {actual_buy_amount:.2f}원 (체결가: {cur_price:.2f})")
+                                # 매수 집행 분기
+                                if self.trade_mode == "TEST":
+                                    # 모의 투자 매수 시뮬레이션
+                                    acc = self.load_virtual_account()
+                                    if acc.get("virtual_krw", 0.0) >= actual_buy_amount:
+                                        acc["virtual_krw"] -= actual_buy_amount
+                                        # 매수 수수료 0.05% 차감 후 수량 계산
+                                        coin_qty = (actual_buy_amount * 0.9995) / current_price
+                                        acc["virtual_balances"][ticker] = {
+                                            "balance": coin_qty,
+                                            "avg_buy_price": current_price
+                                        }
+                                        self.save_virtual_account(acc)
+                                        
+                                        saveLog(f">> [가상 매수 집행] {ticker} 시장가 매수 완료 (금액: {actual_buy_amount:.2f}원, 평단가: {current_price})")
+                                        send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [모의] 매수 완료!!!\n코인: {ticker}\n매수 금액: {actual_buy_amount:.2f}원 (체결가: {current_price:.2f})")
+                                    else:
+                                        saveLog(f">> [가상 매수 실패] 원화 잔고 부족")
+                                else:
+                                    # 실거래 매수 주문
+                                    saveLog(f">> [매수 집행] {ticker} 시장가 매수 진행 (금액: {actual_buy_amount})")
+                                    self.upbitInst.buy_market_order(ticker, actual_buy_amount * 0.9995)
+                                    cur_price = get_current_price(ticker)
+                                    send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [실제] 매수 완료!!!\n코인: {ticker}\n매수 금액: {actual_buy_amount:.2f}원 (체결가: {cur_price:.2f})")
                                 
                                 # 매수한 코인의 최고가 트래킹 초기화
-                                self.held_coins_max_price[ticker] = cur_price
+                                self.held_coins_max_price[ticker] = current_price
                                 
-                                # 매수 처리 후 밸런스가 변하므로 즉시 루프 재시작
+                                # 매수 처리 후 즉시 루프 재시작
                                 time.sleep(1)
                                 break
 
                 # 매 루프 후 출력할 모니터링 로그 (1분 단위 저장)
                 if check_one_minute_time():
-                    status_text = f"자산 총액: {total_assets:.2f}원 | 원화 잔고: {krw:.2f}원 | 보유 종목 수: {held_count}/{self.max_coin_count}\n"
+                    mode_label = "[모의 투자]" if self.trade_mode == "TEST" else "[실거래]"
+                    status_text = f"{mode_label} 자산 총액: {total_assets:.2f}원 | 원화 잔고: {krw:.2f}원 | 보유 종목 수: {held_count}/{self.max_coin_count}\n"
                     status_text += f"현재 설정: 매수-{self.buy_strategy_type.value}, 매도-{self.sell_strategy_type.value}"
                     if held_count > 0:
                         status_text += "\n보유 현황:\n"

@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - J1 Auto Bitcoin</title>
+    <!-- Google Fonts Outfit & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: rgba(15, 23, 42, 0.7);
+            --card-hover: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --primary-color: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.25);
+            --text-color: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --terminal-bg: #030712;
+            --header-h: 70px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding-top: var(--header-h);
+            background-image: 
+                radial-gradient(circle at 5% 5%, rgba(59, 130, 246, 0.05) 0%, transparent 35%),
+                radial-gradient(circle at 95% 95%, rgba(99, 102, 241, 0.05) 0%, transparent 35%);
+        }
+
+        /* Header Style */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-h);
+            background: rgba(8, 12, 20, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+            z-index: 100;
+        }
+
+        .logo-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .badge-live {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--danger-color);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+        }
+
+        .badge-test {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        }
+
+        .btn-logout {
+            padding: 0.4rem 0.9rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: var(--danger-color);
+        }
+
+        /* Container & Layout */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Common Card Style */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.6rem;
+        }
+
+        /* Asset Grid */
+        .asset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .asset-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem;
+        }
+
+        .asset-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+
+        .asset-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 0.8rem 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.9rem 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .pos-plus {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .pos-minus {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        /* Config Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-group-full {
+            grid-column: span 2;
+        }
+
+        label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        input, select {
+            background: rgba(10, 15, 26, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.65rem 0.8rem;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .btn-submit {
+            grid-column: span 2;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Watchlist Target List */
+        .watchlist-ul {
+            list-style: none;
+        }
+
+        .watchlist-li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .watchlist-li:last-child {
+            border-bottom: none;
+        }
+
+        .watchlist-rank {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-right: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .watchlist-name {
+            font-weight: 500;
+            flex-grow: 1;
+        }
+
+        /* Terminal Logs */
+        .terminal-box {
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #10b981;
+            height: 320px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+            line-height: 1.4;
+        }
+
+        /* Success Alert */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(16, 185, 129, 0.95);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 200;
+        }
+
+        .toast.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-section">
+            <h1>J1 Auto Bitcoin</h1>
+        </div>
+        <div class="header-controls">
+            <span id="modeBadge" class="badge badge-test">TEST</span>
+            <button class="btn-logout" id="logoutBtn">안전 로그아웃</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Left Column -->
+        <main>
+            <!-- Asset Cards Grid -->
+            <div class="asset-grid">
+                <div class="asset-box">
+                    <div class="asset-label">총 평가 자산</div>
+                    <div class="asset-value" id="totalAssets">0원</div>
+                </div>
+                <div class="asset-box">
+                    <div class="asset-label">가용 원화 잔고</div>
+                    <div class="asset-value" id="krwBalance">0원</div>
+                </div>
+            </div>
+
+            <!-- Positions Card -->
+            <div class="card">
+                <div class="card-title">현재 보유 종목</div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>코인명</th>
+                                <th>보유수량</th>
+                                <th>매수평단</th>
+                                <th>현재가</th>
+                                <th>평가금액</th>
+                                <th>수익률</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="card">
+                <div class="card-title">매매 전략 조정 패널</div>
+                <form id="configForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tradeMode">매매 모드</label>
+                            <select id="tradeMode">
+                                <option value="TEST">TEST (모의 투자)</option>
+                                <option value="LIVE">LIVE (실제 거래)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxBuyAmount">종목당 최대 매수 금액(원)</label>
+                            <input type="number" id="maxBuyAmount" required min="5000">
+                        </div>
+                        <div class="form-group">
+                            <label for="buyStrategy">매수 진입 전략</label>
+                            <select id="buyStrategy">
+                                <option value="MA5_CROSSOVER">1시간 봉 5선 돌파</option>
+                                <option value="OPEN_BREAKOUT">시가 대비 +1.5% 상승</option>
+                                <option value="CANDLE_3_GREEN">15분 봉 3연속 양봉</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sellStrategy">매도 청산 전략</label>
+                            <select id="sellStrategy">
+                                <option value="TRAILING_STOP_NO_LOSS">트레일링 스탑 (수익보존+존버)</option>
+                                <option value="HODL_NO_LOSS">순수 존버 (자동 매도 차단)</option>
+                                <option value="FIXED_STOP_LOSS">강제 손절 허용 (존버 해제)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="portfolioRatio">포트폴리오 비율 (종목 배분)</label>
+                            <input type="number" id="portfolioRatio" step="0.01" min="0.01" max="1.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="maxCoinCount">최대 보유 종목 수</label>
+                            <input type="number" id="maxCoinCount" min="1" max="30">
+                        </div>
+                        <div class="form-group">
+                            <label for="trailingStopRatio">트레일링 하락 기준 (비율)</label>
+                            <input type="number" id="trailingStopRatio" step="0.005" min="0.005" max="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="fixedStopLossRatio">지정 손절 기준 (비율)</label>
+                            <input type="number" id="fixedStopLossRatio" step="0.005" max="-0.005">
+                        </div>
+                        <div class="form-group-full">
+                            <button type="submit" class="btn-submit">전략 설정 저장 및 동적 반영</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <!-- Right Column -->
+        <aside>
+            <!-- Universe Watchlist -->
+            <div class="card">
+                <div class="card-title">오늘의 매수 후보 (낙폭 과대 순위)</div>
+                <ul class="watchlist-ul" id="universeList">
+                    <li style="color: var(--text-secondary); text-align: center; padding: 1rem;">로딩 중...</li>
+                </ul>
+            </div>
+
+            <!-- Terminal Logs -->
+            <div class="card">
+                <div class="card-title">실시간 엔진 작동 로그</div>
+                <div class="terminal-box" id="terminalBox">실시간 엔진 로그 연결 대기 중...</div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">설정이 저장 및 동적으로 반영되었습니다!</div>
+
+    <script>
+        let isConfigLoaded = false;
+
+        // 천단위 콤마 포맷팅
+        function formatKRW(val) {
+            return Math.floor(val).toLocaleString('ko-KR') + '원';
+        }
+
+        // 상태 데이터 비동기 폴링
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                
+                if (response.status === 401) {
+                    // 세션 만료 시 로그인 창으로 이동
+                    window.location.href = '/static/login.html';
+                    return;
+                }
+                
+                const data = await response.json();
+                if (data.status === 'error') return;
+                
+                // 1. 헤더 뱃지 업데이트
+                const badge = document.getElementById('modeBadge');
+                if (data.trade_mode === 'LIVE') {
+                    badge.innerText = 'LIVE (실거래)';
+                    badge.className = 'badge badge-live';
+                } else {
+                    badge.innerText = 'TEST (모의투자)';
+                    badge.className = 'badge badge-test';
+                }
+                
+                // 2. 자산 현황 업데이트
+                document.getElementById('totalAssets').innerText = formatKRW(data.total_assets);
+                document.getElementById('krwBalance').innerText = formatKRW(data.krw);
+                
+                // 3. 보유 종목 리스트 테이블 렌더링
+                const tableBody = document.getElementById('positionsTableBody');
+                const coins = Object.keys(data.balances);
+                
+                if (coins.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td></tr>`;
+                } else {
+                    tableBody.innerHTML = coins.map(coin => {
+                        const info = data.balances[coin];
+                        const diff = info.current_price - info.avg_buy_price;
+                        const ratio = (diff / info.avg_buy_price) * 100;
+                        const plClass = ratio >= 0 ? 'pos-plus' : 'pos-minus';
+                        const prefix = ratio >= 0 ? '+' : '';
+                        
+                        return `
+                            <tr>
+                                <td style="font-weight: 600;">${coin}</td>
+                                <td>${info.balance.toFixed(6)}</td>
+                                <td>${formatKRW(info.avg_buy_price)}</td>
+                                <td>${formatKRW(info.current_price)}</td>
+                                <td>${formatKRW(info.value)}</td>
+                                <td class="${plClass}">${prefix}${ratio.toFixed(2)}%</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                // 4. 오늘의 매수 감시 후보 리스트
+                const uniList = document.getElementById('universeList');
+                if (!data.universe || data.universe.length === 0) {
+                    uniList.innerHTML = `<li style="color: var(--text-secondary); padding: 0.5rem; text-align:center;">조건을 검색 중입니다.</li>`;
+                } else {
+                    uniList.innerHTML = data.universe.map((coin, index) => `
+                        <li class="watchlist-li">
+                            <span class="watchlist-rank">${index + 1}</span>
+                            <span class="watchlist-name">${coin}</span>
+                        </li>
+                    `).join('');
+                }
+                
+                // 5. 실시간 블랙 로그 터미널 업데이트
+                const term = document.getElementById('terminalBox');
+                if (data.logs && data.logs.length > 0) {
+                    term.innerText = data.logs.join('\n');
+                    // 항상 맨 아래 로그로 자동 스크롤
+                    term.scrollTop = term.scrollHeight;
+                }
+                
+                // 6. 폼에 최초 설정값 한 번만 세팅
+                if (!isConfigLoaded) {
+                    document.getElementById('tradeMode').value = data.trade_mode;
+                    document.getElementById('buyStrategy').value = data.buy_strategy;
+                    document.getElementById('sellStrategy').value = data.sell_strategy;
+                    document.getElementById('portfolioRatio').value = data.portfolio_ratio;
+                    document.getElementById('maxCoinCount').value = data.max_coin_count;
+                    document.getElementById('maxBuyAmount').value = data.max_buy_amount;
+                    document.getElementById('trailingStopRatio').value = data.trailing_stop_ratio;
+                    document.getElementById('fixedStopLossRatio').value = data.fixed_stop_loss_ratio;
+                    
+                    isConfigLoaded = true;
+                }
+                
+            } catch (err) {
+                console.error("Error fetching status:", err);
+            }
+        }
+
+        // 설정 변경 폼 제출 이벤트
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                trade_mode: document.getElementById('tradeMode').value,
+                buy_strategy: document.getElementById('buyStrategy').value,
+                sell_strategy: document.getElementById('sellStrategy').value,
+                portfolio_ratio: parseFloat(document.getElementById('portfolioRatio').value),
+                max_coin_count: parseInt(document.getElementById('maxCoinCount').value),
+                max_buy_amount: parseFloat(document.getElementById('maxBuyAmount').value),
+                trailing_stop_ratio: parseFloat(document.getElementById('trailingStopRatio').value),
+                fixed_stop_loss_ratio: parseFloat(document.getElementById('fixedStopLossRatio').value),
+                // 기본 보존 값들 유지
+                fee_buffer: 0.0015
+            };
+            
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    showToast();
+                    fetchStatus();
+                } else {
+                    alert("설정 저장에 실패했습니다.");
+                }
+            } catch (err) {
+                alert("서버 연결에 실패했습니다.");
+            }
+        });
+
+        // 토스트 알림 띄우기
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        // 안전 로그아웃 처리
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/static/login.html';
+        });
+
+        // 3초 마다 자동 갱신
+        fetchStatus();
+        setInterval(fetchStatus, 3000);
+    </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 {
+  "trade_mode": "TEST",
   "buy_strategy": "MA5_CROSSOVER",
   "sell_strategy": "TRAILING_STOP_NO_LOSS",
   "portfolio_ratio": 0.1,

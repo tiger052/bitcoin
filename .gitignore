@@ -1,5 +1,6 @@
 # Credentials and Secrets
 b_dev/bitcoin_server/secrets.json
+b_dev/bitcoin_server/virtual_account.json
 *upbit_setting.json
 *kakao_setting.json
 
