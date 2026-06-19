@@ -6,6 +6,7 @@
     <title>대시보드 - J1 Auto Bitcoin</title>
     <!-- Google Fonts Outfit & Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #080c14;
@@ -355,6 +356,110 @@
             transform: translateY(0);
             opacity: 1;
         }
+
+        /* Custom Tooltip Help Icon */
+        .help-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-secondary);
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: help;
+            margin-left: 0.35rem;
+            position: relative;
+            vertical-align: middle;
+            transition: all 0.2s ease;
+        }
+
+        .help-icon:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .help-icon[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            width: 320px;
+            background: rgba(10, 15, 28, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e2e8f0;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: normal;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 110;
+            text-transform: none;
+        }
+
+        .help-icon[data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Checkbox Group Styles */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            user-select: none;
+            padding: 0.25rem 0;
+            transition: color 0.2s;
+        }
+        .checkbox-item:hover {
+            color: var(--text-color);
+        }
+        .checkbox-item input[type="checkbox"] {
+            accent-color: var(--primary-color);
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            margin: 0;
+        }
+        .relation-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .relation-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+        }
+        .relation-item input[type="radio"] {
+            accent-color: var(--primary-color);
+            cursor: pointer;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -417,6 +522,14 @@
                 </div>
             </div>
 
+            <!-- Assets Chart Card -->
+            <div class="card">
+                <div class="card-title">자산 평가액 추이 곡선</div>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="assetsChart"></canvas>
+                </div>
+            </div>
+
             <!-- Positions Card -->
             <div class="card">
                 <div class="card-title">현재 보유 종목</div>
@@ -444,11 +557,36 @@
                                 <th>평가금액</th>
                                 <th>수익률 (평가손익)</th>
                                 <th style="min-width: 170px;">진행 상태</th>
+                                <th style="width: 80px; text-align: center;">제어</th>
                             </tr>
                         </thead>
                         <tbody id="positionsTableBody">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td>
+                                <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Trade History Card -->
+            <div class="card">
+                <div class="card-title">최근 청산 완료 내역 (최신 50건)</div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>청산 일시</th>
+                                <th>코인명</th>
+                                <th>수량</th>
+                                <th>매수평단</th>
+                                <th>매도단가</th>
+                                <th>실현손익 (수익률)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradeHistoryTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">청산 이력이 없습니다.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -461,58 +599,149 @@
                 <form id="configForm">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="tradeMode">매매 모드</label>
+                            <label for="tradeMode">매매 모드 <span class="help-icon" data-tooltip="TEST(모의투자)는 실제 주문 없이 100만 원 가상 시드로 시뮬레이션을 돌리며, LIVE는 연동된 업비트 실제 자산으로 매매합니다.">ⓘ</span></label>
                             <select id="tradeMode">
                                 <option value="TEST">TEST (모의 투자)</option>
                                 <option value="LIVE">LIVE (실제 거래)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="maxBuyAmount">종목당 최대 매수 금액(원)</label>
+                            <label for="maxBuyAmount">종목당 최대 매수 금액(원) <span class="help-icon" data-tooltip="한 코인을 매수할 때 주문하는 최대 금액입니다. 원화 잔고가 부족할 경우 남은 가용 원화만큼만 주문이 들어갑니다.">ⓘ</span></label>
                             <input type="number" id="maxBuyAmount" required min="5000">
                         </div>
                         <div class="form-group">
-                            <label for="buyStrategy">매수 진입 전략</label>
-                            <select id="buyStrategy">
-                                <option value="MA5_CROSSOVER">1시간 봉 5선 돌파</option>
-                                <option value="OPEN_BREAKOUT">시가 대비 +1.5% 상승</option>
-                                <option value="CANDLE_3_GREEN">15분 봉 3연속 양봉</option>
-                            </select>
+                            <label>매수 진입 전략 <span class="help-icon" data-tooltip="코인을 신규 매수할 때 적용할 트리거 신호 조건입니다.&#10;• 1시간 봉 5선 돌파: 최근 5개 캔들의 평균 가격 돌파 시 매수&#10;• 시가 대비 +1.5% 상승: 당일 시작 가격 대비 1.5% 상승 시 매수&#10;• 15분 봉 3연속 양봉: 직전 15분 봉 3개가 연속 양봉이고 현재 캔들도 양봉일 때 매수&#10;• RSI 과매도 반등: 1시간 봉 기준 RSI(14)가 30 이하로 과매도 구간일 때 매수&#10;• BB 하단 터치 반등: 1시간 봉 기준 가격이 볼린저 밴드(20, 2) 하단선 이하로 떨어질 때 매수">ⓘ</span></label>
+                            <div class="checkbox-group" id="buyStrategiesGroup">
+                                <label class="checkbox-item"><input type="checkbox" value="MA5_CROSSOVER"> 1시간 봉 5선 돌파</label>
+                                <label class="checkbox-item"><input type="checkbox" value="OPEN_BREAKOUT"> 시가 대비 +1.5% 상승</label>
+                                <label class="checkbox-item"><input type="checkbox" value="CANDLE_3_GREEN"> 15분 봉 3연속 양봉</label>
+                                <label class="checkbox-item"><input type="checkbox" value="RSI_OVERSOLD"> RSI 과매도 반등</label>
+                                <label class="checkbox-item"><input type="checkbox" value="BB_LOWER_TOUCH"> 볼린저 밴드 하단 터치 반등</label>
+                            </div>
+                            <div class="relation-group">
+                                <span>매수 결합 관계식:</span>
+                                <label class="relation-item"><input type="radio" name="buyRelation" value="OR" checked> OR</label>
+                                <label class="relation-item"><input type="radio" name="buyRelation" value="AND"> AND</label>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="sellStrategy">매도 청산 전략</label>
-                            <select id="sellStrategy">
-                                <option value="TRAILING_STOP_NO_LOSS">트레일링 스탑 (수익보존+존버)</option>
-                                <option value="HODL_NO_LOSS">순수 존버 (자동 매도 차단)</option>
-                                <option value="FIXED_STOP_LOSS">강제 손절 허용 (존버 해제)</option>
-                            </select>
+                            <label>매도 청산 전략 <span class="help-icon" data-tooltip="코인 매도 시 적용할 청산 기준입니다.&#10;• 트레일링 스탑: 이익 구간에서 최고가 대비 설정된 하락 비율 도달 시 매도&#10;• 순수 존버: 자동 매도를 일체 하지 않고 보유&#10;• 강제 손절 허용: 트레일링 스탑을 적용하되 설정된 지정 손절 비율 이하로 떨어지면 강제 손절&#10;• RSI 과매수 청산: 이익 구간에서 1시간 봉 기준 RSI(14)가 70 이상으로 과열 시 매도&#10;• BB 상단 터치 청산: 이익 구간에서 1시간 봉 기준 가격이 볼린저 밴드(20, 2) 상단선 이상 터치 시 매도&#10;* 주의: 모든 매도 전략(손절 제외)은 원금 대비 수수료를 반영한 본전 이상(평단가 * 1.0015) 구간에서만 작동하여 강제 손실을 차단합니다.">ⓘ</span></label>
+                            <div class="checkbox-group" id="sellStrategiesGroup">
+                                <label class="checkbox-item"><input type="checkbox" value="TRAILING_STOP_NO_LOSS"> 트레일링 스탑 (수익보존+존버)</label>
+                                <label class="checkbox-item"><input type="checkbox" value="HODL_NO_LOSS"> 순수 존버 (자동 매도 차단)</label>
+                                <label class="checkbox-item"><input type="checkbox" value="FIXED_STOP_LOSS"> 강제 손절 허용 (존버 해제)</label>
+                                <label class="checkbox-item"><input type="checkbox" value="RSI_OVERBOUGHT"> RSI 과매수 청산</label>
+                                <label class="checkbox-item"><input type="checkbox" value="BB_UPPER_TOUCH"> 볼린저 밴드 상단 터치 청산</label>
+                            </div>
+                            <div class="relation-group">
+                                <span>매도 결합 관계식:</span>
+                                <label class="relation-item"><input type="radio" name="sellRelation" value="OR" checked> OR</label>
+                                <label class="relation-item"><input type="radio" name="sellRelation" value="AND"> AND</label>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="portfolioRatio">포트폴리오 비율 (종목 배분)</label>
+                            <label for="useCircuitBreaker">폭락장 방어 (서킷 브레이커) <span class="help-icon" data-tooltip="활성화 시, 비트코인(KRW-BTC)이 1시간 봉 20선 이평선 미만으로 하락한 추세일 때 알트코인의 신규 자동 매수를 중단합니다. (보유 자산 매도/손절은 작동)">ⓘ</span></label>
+                            <select id="useCircuitBreaker">
+                                <option value="false">비활성화</option>
+                                <option value="true">활성화 (BTC 추세 감시)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <div>
+                                <label for="rsiPeriod" style="font-size:0.75rem;">RSI 계산 기간 <span class="help-icon" data-tooltip="RSI는 최근 가격 변동의 강도를 나타내는 지표(0~100)로, 이 지수를 계산할 때 반영할 과거 봉(캔들)의 개수입니다. 기본값은 14봉이며, 이 기간 동안의 상승/하락 비율을 기반으로 과열 여부를 판단합니다.">ⓘ</span></label>
+                                <input type="number" id="rsiPeriod" value="14" min="2" max="100">
+                            </div>
+                            <div>
+                                <label for="rsiBuyLimit" style="font-size:0.75rem;">RSI 매수 기준 (이하) <span class="help-icon" data-tooltip="RSI가 이 수치 이하로 떨어지면 시장에 파는 사람이 너무 많아 가격이 과도하게 하락한 '과매도(저평가)' 상태로 해석해 반등 시점으로 보고 매수를 진입합니다. (보통 30 이하를 기준으로 삼습니다.)">ⓘ</span></label>
+                                <input type="number" id="rsiBuyLimit" value="30" min="10" max="90">
+                            </div>
+                        </div>
+                        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <div>
+                                <label for="rsiSellLimit" style="font-size:0.75rem;">RSI 매도 기준 (이상) <span class="help-icon" data-tooltip="이익 구간에서 RSI가 이 수치 이상으로 올라가면 시장에 사는 사람이 너무 많아 가격이 과열된 '과매수(고평가)' 상태로 해석하여 청산(매도)을 진입합니다. (보통 70 이상을 기준으로 삼습니다.)">ⓘ</span></label>
+                                <input type="number" id="rsiSellLimit" value="70" min="10" max="90">
+                            </div>
+                            <div>
+                                <label for="bbPeriod" style="font-size:0.75rem;">볼린저 밴드 기간 <span class="help-icon" data-tooltip="볼린저 밴드(가격의 변동 범위를 상/하한선으로 보여주는 지표)의 중심선이 되는 이동평균선(평균 가격)을 계산할 기간(봉 개수)입니다. 기본값인 20은 최근 20시간 동안의 평균 가격 추세를 의미합니다.">ⓘ</span></label>
+                                <input type="number" id="bbPeriod" value="20" min="5" max="100">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="bbDeviation">볼린저 밴드 표준편차 승수 <span class="help-icon" data-tooltip="중심 평균선으로부터 위아래 밴드(상단선/하단선)의 너비를 넓히거나 좁힐 배수입니다. 기본값은 2.0이며, 이 값이 클수록 밴드가 넓어져 하단선 터치(매수)나 상단선 터치(매도) 신호가 더 보수적이고 드물게 발생합니다.">ⓘ</span></label>
+                            <input type="number" id="bbDeviation" step="0.1" value="2.0" min="0.5" max="5.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="portfolioRatio">포트폴리오 비율 (종목 배분) <span class="help-icon" data-tooltip="전체 평가 자산 중 개별 종목 매수에 배정할 가중치 비율입니다. (예: 0.1 이면 자산의 10% 단위로 종목당 매수 예산 배분)">ⓘ</span></label>
                             <input type="number" id="portfolioRatio" step="0.01" min="0.01" max="1.0">
                         </div>
                         <div class="form-group">
-                            <label for="maxCoinCount">최대 보유 종목 수</label>
+                            <label for="maxCoinCount">최대 보유 종목 수 <span class="help-icon" data-tooltip="봇이 동시에 매수하여 포트폴리오에 보유할 수 있는 코인 종목의 최대 개수입니다. 한도에 도달하면 신호가 발생해도 추가 매수하지 않습니다.">ⓘ</span></label>
                             <input type="number" id="maxCoinCount" min="1" max="30">
                         </div>
                         <div class="form-group">
-                            <label for="trailingStopRatio">트레일링 하락 기준 (비율)</label>
+                            <label for="trailingStopRatio">트레일링 하락 기준 (비율) <span class="help-icon" data-tooltip="코인이 매수 평단 및 최고점 대비 하락할 때 익절을 수행할 하락폭 비율입니다. (예: 0.02 이면 최고가 대비 -2% 하락 시 자동 익절 매도)">ⓘ</span></label>
                             <input type="number" id="trailingStopRatio" step="0.005" min="0.005" max="0.1">
                         </div>
                         <div class="form-group">
-                            <label for="fixedStopLossRatio">지정 손절 기준 (비율)</label>
+                            <label for="fixedStopLossRatio">지정 손절 기준 (비율) <span class="help-icon" data-tooltip="손실을 차단하기 위한 강제 손절 기준 비율입니다. 마이너스 값으로 설정해야 합니다. (예: -0.03 이면 평단 대비 -3% 도달 시 시장가로 즉시 손절 매도)">ⓘ</span></label>
                             <input type="number" id="fixedStopLossRatio" step="0.005" max="-0.005">
                         </div>
                         <div class="form-group">
-                            <label for="universeSize">매수 후보군 풀(Pool) 크기</label>
+                            <label for="universeSize">매수 후보군 풀(Pool) 크기 <span class="help-icon" data-tooltip="업비트 거래대금 상위 목록 중 낙폭이 과대한 코인을 추려내어 실시간으로 매수 감시할 후보군(universe)의 총 개수입니다.">ⓘ</span></label>
                             <input type="number" id="universeSize" min="5" max="50">
                         </div>
-                        <div class="form-group-full" style="display: flex; gap: 1rem;">
-                            <button type="submit" class="btn-submit" style="flex: 2;">전략 설정 저장 및 동적 반영</button>
+                        <div class="form-group-full" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button type="submit" class="btn-submit" style="flex: 2; margin-top: 1rem;">전략 설정 저장 및 동적 반영</button>
+                            <button type="button" id="backtestBtn" class="btn-submit" style="flex: 1.5; margin-top: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">백테스트 시뮬레이터</button>
                             <button type="button" id="resetTestBtn" class="btn-logout" style="flex: 1; margin-top: 1rem; padding: 0.8rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger-color); font-weight:600;">모의 잔고 리셋</button>
                         </div>
                     </div>
                 </form>
+            </div>
+
+            <!-- Notifications Card -->
+            <div class="card">
+                <div class="card-title">시스템 알림 연동 및 테스트</div>
+                <form id="notificationForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="snsType">알림 채널 타입 <span class="help-icon" data-tooltip="자동매매 체결 및 예외 에러 보고를 수신할 메신저를 선택합니다.">ⓘ</span></label>
+                            <select id="snsType">
+                                <option value="Telegram">텔레그램 (Telegram)</option>
+                                <option value="Discord">디스코드 (Discord)</option>
+                                <option value="Line">라인 (Line)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="tgTokenGroup">
+                            <label for="telegramApiToken">텔레그램 API 토큰</label>
+                            <input type="text" id="telegramApiToken" placeholder="봇 토큰 입력">
+                        </div>
+                        <div class="form-group" id="tgChatIdGroup">
+                            <label for="telegramChatId">텔레그램 채널/채팅 ID</label>
+                            <input type="text" id="telegramChatId" placeholder="챗 ID 입력">
+                        </div>
+                        <div class="form-group" id="discordUrlGroup" style="display: none;">
+                            <label for="discordWebhookUrl">디스코드 웹훅 URL</label>
+                            <input type="text" id="discordWebhookUrl" placeholder="https://discord.com/api/webhooks/...">
+                        </div>
+                        <div class="form-group" id="lineTokenGroup" style="display: none;">
+                            <label for="lineApiToken">라인 API 토큰</label>
+                            <input type="text" id="lineApiToken" placeholder="라인 노티파이 토큰">
+                        </div>
+                    </div>
+                    <div class="form-group-full" style="display: flex; gap: 1rem; margin-top: 1.2rem;">
+                        <button type="submit" class="btn-submit" style="flex: 2; margin: 0;">알림 설정 저장 및 적용</button>
+                        <button type="button" id="testNotificationBtn" class="btn-logout" style="flex: 1.2; padding: 0.8rem; border-color: rgba(16, 185, 129, 0.4); color: #10b981; font-weight:600; margin: 0;">🔔 테스트 알림 발송</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Blacklist Card -->
+            <div class="card">
+                <div class="card-title">감시 제외 코인 목록 (블랙리스트)</div>
+                <div id="excludeTickersContainer" style="display: flex; flex-wrap: wrap; gap: 0.6rem; min-height: 40px; align-items: center;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">제외된 코인이 없습니다.</span>
+                </div>
             </div>
         </main>
 
@@ -537,6 +766,95 @@
     <!-- Notification Toast -->
     <div class="toast" id="toast">설정이 저장 및 동적으로 반영되었습니다!</div>
 
+    <!-- Backtest Modal -->
+    <div id="backtestModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div class="card" style="width: 90%; max-width: 750px; margin: 0; background: #0b0f19; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 20px 50px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;">
+            <div class="card-title" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span>📊 매매 전략 백테스트 시뮬레이터</span>
+                <span id="closeBacktestModal" style="cursor: pointer; font-size: 1.5rem; color: var(--text-secondary); font-weight: bold;">&times;</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                    <label>테스트 기간</label>
+                    <select id="backtestPeriod">
+                        <option value="7">최근 7일</option>
+                        <option value="15">최근 15일</option>
+                        <option value="30" selected>최근 30일 (추천)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>초기 가상 투자금 (원)</label>
+                    <input type="number" id="backtestStartKrw" value="1000000" min="10000">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 1.5rem;">
+                <button id="runBacktestBtn" class="btn-submit" style="margin: 0; padding: 0.7rem 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">시뮬레이션 시작</button>
+            </div>
+            
+            <!-- Loading Indicator -->
+            <div id="backtestLoading" style="display: none; text-align: center; padding: 2rem;">
+                <div style="display: inline-block; width: 35px; height: 35px; border: 4px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: var(--success-color); animation: spin 1s ease-in-out infinite; margin-bottom: 1rem;"></div>
+                <div style="color: var(--text-secondary); font-size: 0.95rem;">과거 시세 데이터를 수집하고 시뮬레이션을 집행 중입니다...</div>
+                <div style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 0.5rem;">(업비트 API 호출 제한을 고려하여 안전하게 실행됩니다.)</div>
+            </div>
+            
+            <!-- Results Dashboard -->
+            <div id="backtestResults" style="display: none;">
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; margin-top: 1rem;">
+                    <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; margin-bottom: 1rem; color: var(--success-color);">📈 시뮬레이션 결과 요약</h4>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin-bottom: 1.5rem;">
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.2rem;">누적 수익률</div>
+                            <div id="btResultPct" style="font-size: 1.15rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0.00%</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.2rem;">누적 수익금</div>
+                            <div id="btResultProfit" style="font-size: 1.15rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0원</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.2rem;">거래 횟수 (승률)</div>
+                            <div id="btResultTrades" style="font-size: 1.15rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0회 (0%)</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.2rem;">최대 낙폭 (MDD)</div>
+                            <div id="btResultMdd" style="font-size: 1.15rem; font-weight: 700; font-family: 'Outfit', sans-serif; color: var(--danger-color);">-0.00%</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="font-family: 'Outfit', sans-serif; font-size: 1rem; margin-bottom: 0.8rem;">📜 세부 거래 내역 (최신순 20건)</h4>
+                    <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <table style="font-size: 0.85rem;">
+                            <thead style="position: sticky; top: 0; background: #0b0f19; z-index: 10;">
+                                <tr>
+                                    <th>종목</th>
+                                    <th>매수 일시</th>
+                                    <th>매수가</th>
+                                    <th>매도 일시</th>
+                                    <th>매도가</th>
+                                    <th>수익률</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backtestTradeList">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">거래 내역이 없습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
     <script>
         let isConfigLoaded = false;
 
@@ -558,6 +876,9 @@
                 
                 const data = await response.json();
                 if (data.status === 'error') return;
+                
+                // 코인명 한글 매핑 정보 글로벌 캐싱
+                window.tickerNamesCache = data.ticker_names;
                 
                 // 1. 헤더 뱃지 업데이트
                 const badge = document.getElementById('modeBadge');
@@ -617,7 +938,7 @@
                 
                 if (coins.length === 0) {
                     summaryBar.style.display = 'none';
-                    tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">보유 자산이 없습니다.</td></tr>`;
                 } else {
                     summaryBar.style.display = 'flex';
                     
@@ -711,6 +1032,9 @@
                                         </div>
                                     </div>
                                 </td>
+                                <td style="vertical-align: middle; text-align: center;">
+                                    <button class="btn-logout" style="padding: 0.35rem 0.6rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger-color); font-weight:600; font-size: 0.75rem;" onclick="manualSell('${coin}')">즉시 매도</button>
+                                </td>
                             </tr>
                         `;
                     }).join('');
@@ -765,9 +1089,13 @@
                                         <span class="watchlist-name" style="font-weight:600;">${nameDisplay}</span>
                                         ${triggerBadge}
                                     </div>
-                                    <span class="${badgeClass}" style="font-size:0.85rem; font-family: 'Fira Code', monospace; font-weight: 600;">
-                                        ${status ? formatKRW(status.current_price) : '...'}
-                                    </span>
+                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                        <span class="${badgeClass}" style="font-size:0.85rem; font-family: 'Fira Code', monospace; font-weight: 600; margin-right: 0.2rem;">
+                                            ${status ? formatKRW(status.current_price) : '...'}
+                                        </span>
+                                        <button class="btn-logout" style="padding: 0.25rem 0.5rem; border-color: rgba(16, 185, 129, 0.4); color: var(--success-color); font-weight:600; font-size: 0.7rem; margin-right: 0.2rem;" onclick="manualBuy('${coin}')">즉시 매수</button>
+                                        <button class="btn-logout" style="padding: 0.25rem 0.4rem; border-color: rgba(239, 68, 68, 0.4); color: var(--danger-color); font-weight:600; font-size: 0.7rem;" onclick="excludeTicker('${coin}')" title="이 코인을 오늘의 감시 대상에서 영구 제외">제외</button>
+                                    </div>
                                 </div>
                                 <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; width: 100%; font-size:0.75rem; color: var(--text-secondary); padding-left: 2.2rem; line-height: 1.2; margin-top: 0.1rem;">
                                     <span>${detailText}</span>
@@ -789,8 +1117,35 @@
                 // 6. 폼에 최초 설정값 한 번만 세팅
                 if (!isConfigLoaded) {
                     document.getElementById('tradeMode').value = data.trade_mode;
-                    document.getElementById('buyStrategy').value = data.buy_strategy;
-                    document.getElementById('sellStrategy').value = data.sell_strategy;
+                    
+                    // 다중 매수 전략 체크박스 복원
+                    const buyStrList = data.buy_strategies || [data.buy_strategy];
+                    document.querySelectorAll('#buyStrategiesGroup input[type="checkbox"]').forEach(cb => {
+                        cb.checked = buyStrList.includes(cb.value);
+                    });
+                    // 매수 관계식 복원
+                    const buyRel = data.buy_strategy_relation || "OR";
+                    const buyRelEl = document.querySelector(`input[name="buyRelation"][value="${buyRel}"]`);
+                    if (buyRelEl) buyRelEl.checked = true;
+                    
+                    // 다중 매도 전략 체크박스 복원
+                    const sellStrList = data.sell_strategies || [data.sell_strategy];
+                    document.querySelectorAll('#sellStrategiesGroup input[type="checkbox"]').forEach(cb => {
+                        cb.checked = sellStrList.includes(cb.value);
+                    });
+                    // 매도 관계식 복원
+                    const sellRel = data.sell_strategy_relation || "OR";
+                    const sellRelEl = document.querySelector(`input[name="sellRelation"][value="${sellRel}"]`);
+                    if (sellRelEl) sellRelEl.checked = true;
+
+                    // 서킷 브레이커 및 기술 지표 튜닝 필드 복원
+                    document.getElementById('useCircuitBreaker').value = String(data.use_circuit_breaker || false);
+                    document.getElementById('rsiPeriod').value = data.rsi_period || 14;
+                    document.getElementById('rsiBuyLimit').value = data.rsi_buy_limit || 30;
+                    document.getElementById('rsiSellLimit').value = data.rsi_sell_limit || 70;
+                    document.getElementById('bbPeriod').value = data.bb_period || 20;
+                    document.getElementById('bbDeviation').value = data.bb_deviation || 2.0;
+
                     document.getElementById('portfolioRatio').value = data.portfolio_ratio;
                     document.getElementById('maxCoinCount').value = data.max_coin_count;
                     document.getElementById('maxBuyAmount').value = data.max_buy_amount;
@@ -801,8 +1156,63 @@
                     isConfigLoaded = true;
                 }
                 
+                // 7. 최근 거래 이력 동기화
+                fetchTradeHistory();
+                
+                // 8. 감시 제외 코인 목록 렌더링
+                if (data.exclude_tickers) {
+                    renderExcludeTickers(data.exclude_tickers);
+                }
+                
             } catch (err) {
                 console.error("Error fetching status:", err);
+            }
+        }
+
+        // 최근 거래 내역 조회 및 렌더링
+        async function fetchTradeHistory() {
+            try {
+                const response = await fetch('/api/trade_history');
+                if (response.status === 401) return;
+                
+                const history = await response.json();
+                const tableBody = document.getElementById('tradeHistoryTableBody');
+                if (!tableBody) return;
+                
+                if (history.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">청산 이력이 없습니다.</td></tr>`;
+                    return;
+                }
+                
+                tableBody.innerHTML = history.map(item => {
+                    const diff = item.realized_pl;
+                    const plClass = diff >= 0 ? 'pos-plus' : 'pos-minus';
+                    const prefix = diff >= 0 ? '+' : '';
+                    
+                    // 수익률 계산 (소수점 자릿수 정리)
+                    const ratio = item.ratio !== undefined ? item.ratio : ((diff / item.buy_cost) * 100);
+                    
+                    // 한국어 명칭 가져오기
+                    const ticker = item.ticker;
+                    const kName = (window.tickerNamesCache && window.tickerNamesCache[ticker]) ? window.tickerNamesCache[ticker] : '';
+                    const displayName = kName ? `${ticker}<br><span style="font-size:0.75rem; font-weight: normal; color: var(--text-secondary);">${kName}</span>` : ticker;
+                    
+                    return `
+                        <tr>
+                            <td style="font-size: 0.8rem; color: var(--text-secondary); vertical-align: middle;">${item.timestamp}</td>
+                            <td style="font-weight: 600; vertical-align: middle;">${displayName}</td>
+                            <td style="vertical-align: middle;">${item.balance.toFixed(6)}</td>
+                            <td style="vertical-align: middle;">${formatKRW(item.avg_buy_price)}</td>
+                            <td style="vertical-align: middle;">${formatKRW(item.sell_price)}</td>
+                            <td class="${plClass}" style="vertical-align: middle; font-weight: 600;">
+                                ${prefix}${formatKRW(diff)}<br>
+                                <span style="font-size: 0.75rem; font-weight: 500;">${prefix}${ratio.toFixed(2)}%</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Error fetching trade history:", err);
             }
         }
 
@@ -810,18 +1220,51 @@
         document.getElementById('configForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // 체크박스 값 수집
+            const buyStrategies = [];
+            document.querySelectorAll('#buyStrategiesGroup input[type="checkbox"]:checked').forEach(cb => {
+                buyStrategies.push(cb.value);
+            });
+            const sellStrategies = [];
+            document.querySelectorAll('#sellStrategiesGroup input[type="checkbox"]:checked').forEach(cb => {
+                sellStrategies.push(cb.value);
+            });
+            
+            if (buyStrategies.length === 0) {
+                alert("최소 한 개 이상의 매수 진입 전략을 선택해야 합니다.");
+                return;
+            }
+            if (sellStrategies.length === 0) {
+                alert("최소 한 개 이상의 매도 청산 전략을 선택해야 합니다.");
+                return;
+            }
+
+            const buyRel = document.querySelector('input[name="buyRelation"]:checked').value;
+            const sellRel = document.querySelector('input[name="sellRelation"]:checked').value;
+
             const payload = {
                 trade_mode: document.getElementById('tradeMode').value,
-                buy_strategy: document.getElementById('buyStrategy').value,
-                sell_strategy: document.getElementById('sellStrategy').value,
+                buy_strategy: buyStrategies[0],
+                sell_strategy: sellStrategies[0],
                 portfolio_ratio: parseFloat(document.getElementById('portfolioRatio').value),
                 max_coin_count: parseInt(document.getElementById('maxCoinCount').value),
                 max_buy_amount: parseFloat(document.getElementById('maxBuyAmount').value),
                 trailing_stop_ratio: parseFloat(document.getElementById('trailingStopRatio').value),
                 fixed_stop_loss_ratio: parseFloat(document.getElementById('fixedStopLossRatio').value),
                 universe_size: parseInt(document.getElementById('universeSize').value),
-                // 기본 보존 값들 유지
-                fee_buffer: 0.0015
+                fee_buffer: 0.0015,
+                
+                // 신규 전략 고도화 매개변수
+                use_circuit_breaker: document.getElementById('useCircuitBreaker').value === "true",
+                rsi_period: parseInt(document.getElementById('rsiPeriod').value),
+                rsi_buy_limit: parseFloat(document.getElementById('rsiBuyLimit').value),
+                rsi_sell_limit: parseFloat(document.getElementById('rsiSellLimit').value),
+                bb_period: parseInt(document.getElementById('bbPeriod').value),
+                bb_deviation: parseFloat(document.getElementById('bbDeviation').value),
+                buy_strategies: buyStrategies,
+                buy_strategy_relation: buyRel,
+                sell_strategies: sellStrategies,
+                sell_strategy_relation: sellRel
             };
             
             try {
@@ -851,6 +1294,178 @@
             }, 3000);
         }
 
+        // 수동 매수 집행
+        async function manualBuy(ticker) {
+            if (confirm(`${ticker} 종목을 시장가로 즉시 수동 매수하시겠습니까?`)) {
+                try {
+                    const res = await fetch('/api/manual_buy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker: ticker })
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                        alert(result.message || "수동 매수 주문이 완료되었습니다.");
+                        fetchStatus();
+                    } else {
+                        alert("수동 매수 실패: " + (result.detail || "알 수 없는 에러"));
+                    }
+                } catch (err) {
+                    alert("서버 연결 실패");
+                }
+            }
+        }
+
+        // 수동 매도 집행
+        async function manualSell(ticker) {
+            if (confirm(`${ticker} 종목을 시장가로 즉시 수동 매도(전량 청산)하시겠습니까?`)) {
+                try {
+                    const res = await fetch('/api/manual_sell', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker: ticker })
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                        alert(result.message || "수동 매도 주문이 완료되었습니다.");
+                        fetchStatus();
+                    } else {
+                        alert("수동 매도 실패: " + (result.detail || "알 수 없는 에러"));
+                    }
+                } catch (err) {
+                    alert("서버 연결 실패");
+                }
+            }
+        }
+
+        // 감시 대상 코인 제외 처리
+        async function excludeTicker(ticker) {
+            if (confirm(`${ticker} 코인을 매수 후보 및 감시 대상에서 제외하시겠습니까?`)) {
+                try {
+                    const res = await fetch('/api/exclude_ticker', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker: ticker })
+                    });
+                    if (res.ok) {
+                        fetchStatus();
+                    } else {
+                        const errData = await res.json();
+                        alert("제외 등록 실패: " + (errData.detail || "에러"));
+                    }
+                } catch (err) {
+                    alert("서버 연결 실패");
+                }
+            }
+        }
+
+        // 제외 대상 코인 다시 복구
+        async function includeTicker(ticker) {
+            try {
+                const res = await fetch('/api/exclude_ticker', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker: ticker })
+                });
+                if (res.ok) {
+                    fetchStatus();
+                } else {
+                    const errData = await res.json();
+                    alert("제외 해제 실패: " + (errData.detail || "에러"));
+                }
+            } catch (err) {
+                alert("서버 연결 실패");
+            }
+        }
+
+        // 제외 목록 뱃지 렌더링
+        function renderExcludeTickers(excludedList) {
+            const container = document.getElementById('excludeTickersContainer');
+            if (!container) return;
+            if (!excludedList || excludedList.length === 0) {
+                container.innerHTML = `<span style="color: var(--text-secondary); font-size: 0.9rem;">제외된 코인이 없습니다.</span>`;
+                return;
+            }
+            container.innerHTML = excludedList.map(ticker => {
+                const kName = (window.tickerNamesCache && window.tickerNamesCache[ticker]) ? window.tickerNamesCache[ticker] : '';
+                const displayName = kName ? `${ticker}(${kName})` : ticker;
+                return `
+                    <span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--danger-color); border: 1px solid rgba(239, 68, 68, 0.3); display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.7rem; font-weight: 500; font-size: 0.8rem; border-radius: 8px;">
+                        ${displayName}
+                        <span style="cursor: pointer; font-weight: bold; font-size: 0.95rem; line-height: 1;" onclick="includeTicker('${ticker}')" title="다시 감시 대상에 포함">&times;</span>
+                    </span>
+                `;
+            }).join('');
+        }
+
+        // 자산 그래프 누적 추이 그리기
+        let assetsChart = null;
+        async function updateAssetsChart() {
+            try {
+                const res = await fetch('/api/assets_history');
+                if (!res.ok) return;
+                const history = await res.json();
+                if (!history || history.length === 0) return;
+
+                history.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                const last30 = history.slice(-30);
+                const labels = last30.map(item => item.timestamp.split(' ')[0]);
+                const dataValues = last30.map(item => item.total_assets);
+
+                const ctx = document.getElementById('assetsChart').getContext('2d');
+                if (assetsChart) {
+                    assetsChart.data.labels = labels;
+                    assetsChart.data.datasets[0].data = dataValues;
+                    assetsChart.update();
+                } else {
+                    assetsChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '총 평가 자산 (원)',
+                                data: dataValues,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.1,
+                                pointBackgroundColor: '#3b82f6',
+                                pointBorderColor: '#080c14',
+                                pointHoverRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#64748b', font: { size: 10 } }
+                                },
+                                y: {
+                                    grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                                    ticks: {
+                                        color: '#64748b',
+                                        font: { size: 10 },
+                                        callback: function(value) {
+                                            return value >= 10000 ? (value / 10000).toLocaleString() + '만' : value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Error drawing assets chart:", err);
+            }
+        }
+
         // 모의 잔고 초기화 처리
         document.getElementById('resetTestBtn').addEventListener('click', async () => {
             if (confirm("정말로 모의투자 잔고를 1,000,000원으로 초기화하시겠습니까? (보유하고 있는 모든 모의 주식도 매도 처리됩니다.)")) {
@@ -874,9 +1489,246 @@
             window.location.href = '/static/login.html';
         });
 
-        // 3초 마다 자동 갱신
+        // Backtest Modal Controls
+        const btModal = document.getElementById('backtestModal');
+        const openBtBtn = document.getElementById('backtestBtn');
+        const closeBtBtn = document.getElementById('closeBacktestModal');
+        const runBtBtn = document.getElementById('runBacktestBtn');
+        const loadingBt = document.getElementById('backtestLoading');
+        const resultsBt = document.getElementById('backtestResults');
+
+        openBtBtn.addEventListener('click', () => {
+            btModal.style.display = 'flex';
+            resultsBt.style.display = 'none';
+            loadingBt.style.display = 'none';
+        });
+
+        closeBtBtn.addEventListener('click', () => {
+            btModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === btModal) {
+                btModal.style.display = 'none';
+            }
+        });
+
+        runBtBtn.addEventListener('click', async () => {
+            const period = parseInt(document.getElementById('backtestPeriod').value);
+            const startKrw = parseFloat(document.getElementById('backtestStartKrw').value);
+            
+            // 현재 화면 설정에서 매수/매도 전략 체크박스 및 관계식 수집
+            const buyStrategies = [];
+            document.querySelectorAll('#buyStrategiesGroup input[type="checkbox"]:checked').forEach(cb => {
+                buyStrategies.push(cb.value);
+            });
+            const sellStrategies = [];
+            document.querySelectorAll('#sellStrategiesGroup input[type="checkbox"]:checked').forEach(cb => {
+                sellStrategies.push(cb.value);
+            });
+            
+            if (buyStrategies.length === 0) {
+                alert("최소 한 개 이상의 매수 진입 전략을 선택해야 합니다.");
+                return;
+            }
+            if (sellStrategies.length === 0) {
+                alert("최소 한 개 이상의 매도 청산 전략을 선택해야 합니다.");
+                return;
+            }
+            
+            const buyRel = document.querySelector('input[name="buyRelation"]:checked').value;
+            const sellRel = document.querySelector('input[name="sellRelation"]:checked').value;
+            
+            // Show loading, hide results
+            loadingBt.style.display = 'block';
+            resultsBt.style.display = 'none';
+            runBtBtn.disabled = true;
+            runBtBtn.style.opacity = '0.5';
+
+            try {
+                const res = await fetch('/api/backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        period_days: period,
+                        start_krw: startKrw,
+                        buy_strategy: buyStrategies[0],
+                        sell_strategy: sellStrategies[0],
+                        portfolio_ratio: parseFloat(document.getElementById('portfolioRatio').value),
+                        max_coin_count: parseInt(document.getElementById('maxCoinCount').value),
+                        max_buy_amount: parseFloat(document.getElementById('maxBuyAmount').value),
+                        trailing_stop_ratio: parseFloat(document.getElementById('trailingStopRatio').value),
+                        fixed_stop_loss_ratio: parseFloat(document.getElementById('fixedStopLossRatio').value),
+                        universe_size: parseInt(document.getElementById('universeSize').value),
+                        
+                        // 신규 고도화 매개변수
+                        use_circuit_breaker: document.getElementById('useCircuitBreaker').value === "true",
+                        rsi_period: parseInt(document.getElementById('rsiPeriod').value),
+                        rsi_buy_limit: parseFloat(document.getElementById('rsiBuyLimit').value),
+                        rsi_sell_limit: parseFloat(document.getElementById('rsiSellLimit').value),
+                        bb_period: parseInt(document.getElementById('bbPeriod').value),
+                        bb_deviation: parseFloat(document.getElementById('bbDeviation').value),
+                        buy_strategies: buyStrategies,
+                        buy_strategy_relation: buyRel,
+                        sell_strategies: sellStrategies,
+                        sell_strategy_relation: sellRel
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert("백테스트 실패: " + (err.detail || "알 수 없는 오류"));
+                    loadingBt.style.display = 'none';
+                    return;
+                }
+
+                const data = await res.json();
+                
+                // Set summary
+                const profitSign = data.total_profit >= 0 ? '+' : '';
+                const profitClass = data.total_profit >= 0 ? 'pos-plus' : 'pos-minus';
+                
+                document.getElementById('btResultPct').innerText = `${profitSign}${data.return_ratio.toFixed(2)}%`;
+                document.getElementById('btResultPct').className = profitClass;
+                
+                document.getElementById('btResultProfit').innerText = `${profitSign}${formatKRW(data.total_profit)}`;
+                document.getElementById('btResultProfit').className = profitClass;
+                
+                document.getElementById('btResultTrades').innerText = `${data.total_trades}회 (승률 ${data.win_rate.toFixed(1)}%)`;
+                document.getElementById('btResultMdd').innerText = `-${data.mdd.toFixed(2)}%`;
+
+                // Set trade history table
+                const tradeList = document.getElementById('backtestTradeList');
+                if (data.trades.length === 0) {
+                    tradeList.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">기록된 가상 거래가 없습니다.</td></tr>`;
+                } else {
+                    tradeList.innerHTML = data.trades.slice(0, 20).map(t => {
+                        const tSign = t.profit >= 0 ? '+' : '';
+                        const tClass = t.profit >= 0 ? 'pos-plus' : 'pos-minus';
+                        return `
+                            <tr>
+                                <td style="font-weight:600;">${t.ticker}</td>
+                                <td>${t.buy_time.split(' ')[0]} ${t.buy_time.split(' ')[1] ? t.buy_time.split(' ')[1].slice(0,5) : ''}</td>
+                                <td>${formatKRW(t.buy_price)}</td>
+                                <td>${t.sell_time.split(' ')[0]} ${t.sell_time.split(' ')[1] ? t.sell_time.split(' ')[1].slice(0,5) : ''}</td>
+                                <td>${formatKRW(t.sell_price)}</td>
+                                <td class="${tClass}">${tSign}${t.return_rate.toFixed(2)}%</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                resultsBt.style.display = 'block';
+            } catch (err) {
+                alert("서버 통신 실패");
+            } finally {
+                loadingBt.style.display = 'none';
+                runBtBtn.disabled = false;
+                runBtBtn.style.opacity = '1';
+            }
+        });
+
+        // --- 알림(Notification) 설정 제어 기능 ---
+        const snsTypeSelect = document.getElementById('snsType');
+        const tgTokenGroup = document.getElementById('tgTokenGroup');
+        const tgChatIdGroup = document.getElementById('tgChatIdGroup');
+        const discordUrlGroup = document.getElementById('discordUrlGroup');
+        const lineTokenGroup = document.getElementById('lineTokenGroup');
+
+        // 알림 채널에 따라 입력 폼 토글
+        function toggleNotificationInputs(snsType) {
+            tgTokenGroup.style.display = snsType === 'Telegram' ? 'block' : 'none';
+            tgChatIdGroup.style.display = snsType === 'Telegram' ? 'block' : 'none';
+            discordUrlGroup.style.display = snsType === 'Discord' ? 'block' : 'none';
+            lineTokenGroup.style.display = snsType === 'Line' ? 'block' : 'none';
+        }
+
+        snsTypeSelect.addEventListener('change', (e) => {
+            toggleNotificationInputs(e.target.value);
+        });
+
+        // 저장된 알림 설정 가져오기
+        async function fetchNotificationSettings() {
+            try {
+                const res = await fetch('/api/notifications');
+                if (res.ok) {
+                    const data = await res.json();
+                    snsTypeSelect.value = data.sns_type;
+                    document.getElementById('telegramApiToken').value = data.telegram_api_token || '';
+                    document.getElementById('telegramChatId').value = data.telegram_chat_id || '';
+                    document.getElementById('lineApiToken').value = data.line_api_token || '';
+                    document.getElementById('discordWebhookUrl').value = data.discord_webhook_url || '';
+                    
+                    toggleNotificationInputs(data.sns_type);
+                }
+            } catch (err) {
+                console.error("Error fetching notification settings:", err);
+            }
+        }
+
+        // 알림 설정 저장 제출
+        document.getElementById('notificationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                sns_type: snsTypeSelect.value,
+                telegram_api_token: document.getElementById('telegramApiToken').value,
+                telegram_chat_id: document.getElementById('telegramChatId').value,
+                line_api_token: document.getElementById('lineApiToken').value,
+                discord_webhook_url: document.getElementById('discordWebhookUrl').value
+            };
+
+            try {
+                const res = await fetch('/api/notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("알림 설정이 성공적으로 저장 및 적용되었습니다.");
+                } else {
+                    alert("알림 설정 저장에 실패했습니다.");
+                }
+            } catch (err) {
+                alert("서버 연결에 실패했습니다.");
+            }
+        });
+
+        // 테스트 알림 전송 버튼
+        document.getElementById('testNotificationBtn').addEventListener('click', async () => {
+            const payload = {
+                sns_type: snsTypeSelect.value,
+                telegram_api_token: document.getElementById('telegramApiToken').value,
+                telegram_chat_id: document.getElementById('telegramChatId').value,
+                line_api_token: document.getElementById('lineApiToken').value,
+                discord_webhook_url: document.getElementById('discordWebhookUrl').value
+            };
+
+            try {
+                const res = await fetch('/api/notifications/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await res.json();
+                if (res.ok) {
+                    alert(result.message || "테스트 알림 전송 성공!");
+                } else {
+                    alert(result.detail || "테스트 알림 전송 실패");
+                }
+            } catch (err) {
+                alert("서버 연결에 실패했습니다.");
+            }
+        });
+
+        // 초기 구동 로드
+        fetchNotificationSettings();
+
+        // 3초 마다 자동 갱신, 자산 그래프는 30초마다
         fetchStatus();
+        updateAssetsChart();
         setInterval(fetchStatus, 3000);
+        setInterval(updateAssetsChart, 30000);
     </script>
 </body>
 </html>

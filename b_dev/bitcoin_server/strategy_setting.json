@@ -2,11 +2,28 @@
   "trade_mode": "TEST",
   "buy_strategy": "CANDLE_3_GREEN",
   "sell_strategy": "TRAILING_STOP_NO_LOSS",
-  "portfolio_ratio": 0.05,
-  "max_coin_count": 20,
-  "max_buy_amount": 1000000.0,
-  "trailing_stop_ratio": 0.005,
-  "fixed_stop_loss_ratio": -0.005,
+  "portfolio_ratio": 0.1,
+  "max_coin_count": 5,
+  "max_buy_amount": 10000.0,
+  "trailing_stop_ratio": 0.02,
+  "fixed_stop_loss_ratio": -0.03,
   "fee_buffer": 0.0015,
-  "universe_size": 30
+  "universe_size": 30,
+  "use_circuit_breaker": false,
+  "rsi_period": 14,
+  "rsi_buy_limit": 30.0,
+  "rsi_sell_limit": 70.0,
+  "bb_period": 20,
+  "bb_deviation": 2.0,
+  "buy_strategies": [
+    "CANDLE_3_GREEN",
+    "RSI_OVERSOLD",
+    "BB_LOWER_TOUCH"
+  ],
+  "buy_strategy_relation": "AND",
+  "sell_strategies": [
+    "TRAILING_STOP_NO_LOSS",
+    "RSI_OVERBOUGHT"
+  ],
+  "sell_strategy_relation": "AND"
 }

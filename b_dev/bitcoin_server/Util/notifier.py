@@ -12,6 +12,10 @@ def send_message(mes):
             if not LINE_API_TOKEN or "YOUR_" in LINE_API_TOKEN:
                 return
             send_message_line(mes, LINE_API_TOKEN)
+        elif snsType == SNSType.Discord:
+            if not DISCORD_WEBHOOK_URL or "YOUR_" in DISCORD_WEBHOOK_URL:
+                return
+            send_message_discord(mes, DISCORD_WEBHOOK_URL)
     except Exception as e:
         # 알림 전송 에러가 발생해도 봇의 핵심 트레이딩 루프가 멈추지 않도록 예외 차단 및 로깅만 수행
         print(f">> [Notification Error] {e}")
@@ -21,7 +25,6 @@ def send_message(mes):
 message : 메시지, token : API 토큰
 """
 def send_message_line(message, token=None):
-
     try:
         response = requests.post(
             LINE_URL,
@@ -33,11 +36,8 @@ def send_message_line(message, token=None):
             }
         )
         status = response.json()['status']
-        # 전송 실패 체크
         if status != 200:
-            # 에러 발생 시에만 로깅
             raise Exception('Fail need to check. Status is %s' % status)
-
     except Exception as e:
         raise Exception(e)
 
@@ -49,12 +49,20 @@ def send_message_telegram(message, chatId, token):
     try:
         url = str.format(TELEGRAM_URL,token,chatId,message)
         response = requests.get(url)
-
-        # 전송 실패 체크
         if response.status_code != 200:
-            # 에러 발생 시에만 로깅
             raise Exception('Fail need to check. Status is %s' % response.status_code)
+    except Exception as e:
+        raise Exception(e)
 
+""" 
+[Discord Webhook에 메세지 보내기]
+message : 메시지, webhook_url : 웹훅 URL
+"""
+def send_message_discord(message, webhook_url):
+    try:
+        response = requests.post(webhook_url, json={"content": message})
+        if response.status_code not in [200, 204]:
+            raise Exception('Fail need to check. Status is %s' % response.status_code)
     except Exception as e:
         raise Exception(e)
 

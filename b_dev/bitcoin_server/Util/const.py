@@ -5,18 +5,23 @@ class TradeType(Enum):
     Test = 1            # 모의 거래
 
 class SNSType(Enum):
-    Line = 0,
+    Line = 0
     Telegram = 1
+    Discord = 2
 
 class BuyStrategyType(Enum):
     MA5_CROSSOVER = "MA5_CROSSOVER"
     OPEN_BREAKOUT = "OPEN_BREAKOUT"
     CANDLE_3_GREEN = "CANDLE_3_GREEN"
+    RSI_OVERSOLD = "RSI_OVERSOLD"
+    BB_LOWER_TOUCH = "BB_LOWER_TOUCH"
 
 class SellStrategyType(Enum):
     HODL_NO_LOSS = "HODL_NO_LOSS"
     TRAILING_STOP_NO_LOSS = "TRAILING_STOP_NO_LOSS"
     FIXED_STOP_LOSS = "FIXED_STOP_LOSS"
+    RSI_OVERBOUGHT = "RSI_OVERBOUGHT"
+    BB_UPPER_TOUCH = "BB_UPPER_TOUCH"
 
 class ProcessState(Enum):
     processing = "processing"                   # 처리중
@@ -50,9 +55,10 @@ UPBIT_SECRET_KEY = ""
 LINE_API_TOKEN = ""
 TELEGRAM_API_TOKEN = ""
 TELEGRAM_CHAT_ID = ""
+DISCORD_WEBHOOK_URL = ""
 
 def load_secrets():
-    global UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY, LINE_API_TOKEN, TELEGRAM_API_TOKEN, TELEGRAM_CHAT_ID
+    global UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY, LINE_API_TOKEN, TELEGRAM_API_TOKEN, TELEGRAM_CHAT_ID, DISCORD_WEBHOOK_URL, snsType
     secrets_path = "secrets.json"
     
     # Default placeholder config
@@ -61,7 +67,9 @@ def load_secrets():
         "upbit_secret_key": "YOUR_UPBIT_SECRET_KEY",
         "telegram_api_token": "YOUR_TELEGRAM_API_TOKEN",
         "telegram_chat_id": "YOUR_TELEGRAM_CHAT_ID",
-        "line_api_token": "YOUR_LINE_API_TOKEN"
+        "line_api_token": "YOUR_LINE_API_TOKEN",
+        "discord_webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
+        "sns_type": "Telegram"
     }
     
     try:
@@ -73,6 +81,16 @@ def load_secrets():
             TELEGRAM_API_TOKEN = data.get("telegram_api_token", "")
             TELEGRAM_CHAT_ID = data.get("telegram_chat_id", "")
             LINE_API_TOKEN = data.get("line_api_token", "")
+            DISCORD_WEBHOOK_URL = data.get("discord_webhook_url", "")
+            
+            # sns_type 업데이트
+            sns_name = data.get("sns_type", "Telegram")
+            if sns_name == "Line":
+                snsType = SNSType.Line
+            elif sns_name == "Discord":
+                snsType = SNSType.Discord
+            else:
+                snsType = SNSType.Telegram
         else:
             with open(secrets_path, "w", encoding="utf-8") as f:
                 json.dump(default_secrets, f, indent=2)
