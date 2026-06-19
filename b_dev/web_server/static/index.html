@@ -604,6 +604,30 @@
                         const stopLossPrice = info.avg_buy_price * (1.0 + data.fixed_stop_loss_ratio);
                         const profitPrice = info.avg_buy_price * (1.0 + data.trailing_stop_ratio);
                         
+                        // 동적 트레일링 익절 보존가(추적 손절가) 계산
+                        const maxPrice = info.max_price || Math.max(info.avg_buy_price, info.current_price);
+                        const trailingStopPrice = maxPrice * (1.0 - data.trailing_stop_ratio);
+                        const breakevenPrice = info.avg_buy_price * (1.0 + (data.fee_buffer || 0.0015));
+                        
+                        let trailingStopHtml = '';
+                        let trailingStopDotHtml = '';
+                        
+                        if (info.current_price >= breakevenPrice) {
+                            const trailingRatio = ((trailingStopPrice - info.avg_buy_price) / info.avg_buy_price) * 100;
+                            let trailingPercent = 50;
+                            if (trailingRatio >= 0) {
+                                trailingPercent = 50 + (trailingRatio / (profitLimit || 3.0)) * 50;
+                            } else {
+                                trailingPercent = 50 + (trailingRatio / Math.abs(stopLossLimit || -3.0)) * 50;
+                            }
+                            trailingPercent = Math.max(0, Math.min(100, trailingPercent));
+                            
+                            trailingStopHtml = `<span style="color: #818cf8; font-weight: 600;" title="최고가 ${formatKRW(maxPrice)} 대비 ${profitLimit.toFixed(1)}% 하락 시 익절 보존 매도">추적손절: ${formatKRW(trailingStopPrice)}</span>`;
+                            trailingStopDotHtml = `<div style="position: absolute; left: ${trailingPercent}%; width: 8px; height: 8px; border-radius: 50%; background: #818cf8; top: -2px; transform: translateX(-50%); box-shadow: 0 0 5px #818cf8; z-index: 1;" title="추적손절 기준가: ${formatKRW(trailingStopPrice)} (최고가: ${formatKRW(maxPrice)})"></div>`;
+                        } else {
+                            trailingStopHtml = `<span style="color: var(--text-secondary); font-size: 0.65rem;">(최고: ${formatKRW(maxPrice)})</span>`;
+                        }
+                        
                         return `
                             <tr>
                                 <td style="font-weight: 600; vertical-align: middle;">${displayName}</td>
@@ -619,12 +643,13 @@
                                     <div style="display: flex; flex-direction: column; gap: 0.2rem;">
                                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary); gap: 0.3rem;">
                                             <span style="color: var(--danger-color); font-weight: 500;">손절: ${formatKRW(stopLossPrice)}</span>
-                                            <span>평단</span>
+                                            ${trailingStopHtml}
                                             <span style="color: var(--success-color); font-weight: 500;">목표: ${formatKRW(profitPrice)}</span>
                                         </div>
                                         <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-top:2px;">
                                             <div style="position: absolute; left: 50%; width: 1px; height: 100%; background: rgba(255,255,255,0.3);"></div>
-                                            <div style="position: absolute; left: ${percent}%; width: 10px; height: 10px; border-radius: 50%; background: ${plColorCode}; top: -3px; transform: translateX(-50%); box-shadow: 0 0 6px ${plColorCode};"></div>
+                                            <div style="position: absolute; left: ${percent}%; width: 10px; height: 10px; border-radius: 50%; background: ${plColorCode}; top: -3px; transform: translateX(-50%); box-shadow: 0 0 6px ${plColorCode}; z-index: 2;"></div>
+                                            ${trailingStopDotHtml}
                                         </div>
                                     </div>
                                 </td>

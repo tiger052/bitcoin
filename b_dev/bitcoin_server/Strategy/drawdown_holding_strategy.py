@@ -286,11 +286,20 @@ class DrawdownHoldingStrategy(threading.Thread):
                     time.sleep(0.1)
                     val = balance * cur_price
                     total_assets += val
+                    
+                    # 최고가 관리 및 갱신
+                    if ticker not in self.held_coins_max_price:
+                        self.held_coins_max_price[ticker] = max(avg_buy_price, cur_price)
+                    else:
+                        self.held_coins_max_price[ticker] = max(cur_price, self.held_coins_max_price[ticker])
+                    max_price = self.held_coins_max_price[ticker]
+                    
                     balances[ticker] = {
                         'balance': balance,
                         'avg_buy_price': avg_buy_price,
                         'current_price': cur_price,
-                        'value': val
+                        'value': val,
+                        'max_price': max_price
                     }
             else:
                 # 실거래: 업비트 거래소 API 호출
@@ -316,11 +325,20 @@ class DrawdownHoldingStrategy(threading.Thread):
                         time.sleep(0.1)
                         val = balance * cur_price
                         total_assets += val
+                        
+                        # 최고가 관리 및 갱신
+                        if ticker not in self.held_coins_max_price:
+                            self.held_coins_max_price[ticker] = max(avg_buy_price, cur_price)
+                        else:
+                            self.held_coins_max_price[ticker] = max(cur_price, self.held_coins_max_price[ticker])
+                        max_price = self.held_coins_max_price[ticker]
+                        
                         balances[ticker] = {
                             'balance': balance,
                             'avg_buy_price': avg_buy_price,
                             'current_price': cur_price,
-                            'value': val
+                            'value': val,
+                            'max_price': max_price
                         }
         except Exception as e:
             saveLog(f">> [계좌 조회 에러] {e}")
