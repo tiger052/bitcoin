@@ -399,16 +399,16 @@ class DrawdownHoldingStrategy(threading.Thread):
             print(f">> [자산 이력 저장 에러] {e}")
 
     def get_period_returns(self, current_assets):
-        """일, 주, 월, 년 단위 수익 계산"""
+        """매도 완료 이력을 바탕으로 일, 주, 월, 년 단위 실현 손익 계산"""
         returns = {
-            "daily": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
-            "weekly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
-            "monthly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
-            "yearly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"}
+            "daily": {"amount": 0.0, "ratio": 0.0, "status": "ok"},
+            "weekly": {"amount": 0.0, "ratio": 0.0, "status": "ok"},
+            "monthly": {"amount": 0.0, "ratio": 0.0, "status": "ok"},
+            "yearly": {"amount": 0.0, "ratio": 0.0, "status": "ok"}
         }
         
         try:
-            history_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets_history.json")
+            history_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "trade_history.json")
             history = []
             if os.path.exists(history_path):
                 with open(history_path, "r", encoding="utf-8") as f:
@@ -419,29 +419,6 @@ class DrawdownHoldingStrategy(threading.Thread):
                 
             now = datetime.now()
             
-            # 타겟 날짜 파싱 헬퍼
-            def find_closest_assets(target_days):
-                target_date = now - timedelta(days=target_days)
-                closest_record = None
-                min_diff = None
-                
-                for record in history:
-                    rec_time = datetime.strptime(record["timestamp"], "%Y-%m-%d %H:%M:%S")
-                    diff = abs((rec_time - target_date).total_seconds())
-                    
-                    # 하루 오차 범위(86400초) 이내의 매칭 중 가장 가까운 것 찾기
-                    if min_diff is None or diff < min_diff:
-                        min_diff = diff
-                        closest_record = record
-                
-                # 2일 이내 수준으로 근접한 매칭 데이터가 있으면 반환
-                if min_diff is not None and min_diff < 172800:
-                    return float(closest_record["total_assets"])
-                return None
-
-            # 최초 시작 자산 (모의 투자일 경우 기본 1,000,000원, 실거래면 history의 첫 번째 기록)
-            initial_assets = 1000000.0 if self.trade_mode == "TEST" else (float(history[0]["total_assets"]) if history else current_assets)
-
             periods = {
                 "daily": 1,
                 "weekly": 7,
@@ -450,22 +427,78 @@ class DrawdownHoldingStrategy(threading.Thread):
             }
             
             for key, days in periods.items():
-                past_assets = find_closest_assets(days)
+                target_date = now - timedelta(days=days)
+                period_pl_sum = 0.0
+                period_buy_cost_sum = 0.0
                 
-                if past_assets is not None:
-                    amount = current_assets - past_assets
-                    ratio = (amount / past_assets) * 100
-                    returns[key] = {"amount": amount, "ratio": ratio, "status": "ok"}
-                else:
-                    # 해당 기간 과거 데이터가 없으면 최초 시작 시드(initial_assets)와 비교
-                    amount = current_assets - initial_assets
-                    ratio = (amount / initial_assets) * 100
-                    returns[key] = {"amount": amount, "ratio": ratio, "status": "initial"}
-                    
+                for record in history:
+                    # 현재 모드(TEST / LIVE)에 맞는 기록만 필터링
+                    if record.get("trade_mode", "TEST") != self.trade_mode:
+                        continue
+                        
+                    rec_time = datetime.strptime(record["timestamp"], "%Y-%m-%d %H:%M:%S")
+                    if rec_time >= target_date:
+                        period_pl_sum += float(record.get("realized_pl", 0.0))
+                        period_buy_cost_sum += float(record.get("buy_cost", 0.0))
+                
+                # 수익률 계산 (기간 내 총 투입 비용 대비 실현 수익)
+                ratio = 0.0
+                if period_buy_cost_sum > 0:
+                    ratio = (period_pl_sum / period_buy_cost_sum) * 100
+                
+                returns[key] = {
+                    "amount": period_pl_sum,
+                    "ratio": ratio,
+                    "status": "ok"
+                }
+                
         except Exception as e:
-            print(f">> [기간별 수익 계산 에러] {e}")
+            print(f">> [기간별 실현 손익 계산 에러] {e}")
             
         return returns
+
+    def record_trade_history(self, ticker, avg_buy_price, sell_price, balance):
+        """매도 완료 시 실현 손익 이력을 trade_history.json에 기록"""
+        try:
+            history_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "trade_history.json")
+            history = []
+            if os.path.exists(history_path):
+                try:
+                    with open(history_path, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                except Exception:
+                    history = []
+            
+            # 수수료 포함 실현 손익 계산 (매수수수료 0.05%, 매도수수료 0.05% 가정)
+            buy_cost = avg_buy_price * balance * 1.0005
+            sell_revenue = sell_price * balance * 0.9995
+            realized_pl = sell_revenue - buy_cost
+            
+            new_record = {
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "ticker": ticker,
+                "avg_buy_price": avg_buy_price,
+                "sell_price": sell_price,
+                "balance": balance,
+                "buy_cost": buy_cost,
+                "sell_revenue": sell_revenue,
+                "realized_pl": realized_pl,
+                "trade_mode": self.trade_mode
+            }
+            
+            history.append(new_record)
+            
+            # 최대 10,000개 거래 기록 보존
+            if len(history) > 10000:
+                history = history[-10000:]
+                
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
+                
+            saveLog(f">> [실현 손익 기록 완료] {ticker}: {realized_pl:+.2f}원 확정")
+            
+        except Exception as e:
+            print(f">> [거래 이력 기록 에러] {e}")
 
     def run(self):
         saveLog(">> 트레이딩 스레드 루프 진입.")
@@ -504,12 +537,19 @@ class DrawdownHoldingStrategy(threading.Thread):
                             acc["virtual_balances"].pop(ticker, None)
                             self.save_virtual_account(acc)
                             
+                            # 실현 손익 기록 저장 추가
+                            self.record_trade_history(ticker, avg_buy_price, current_price, info['balance'])
+                            
                             saveLog(f">> [가상 매도 집행] {ticker} 전량 매도 완료 (수량: {info['balance']:.6f}, 매도가: {current_price})")
                             send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [모의] 매도 완료!!!\n코인: {ticker}\n평단가: {avg_buy_price:.2f} -> 매도가: {current_price:.2f}")
                         else:
                             # 실거래 매도 주문
                             saveLog(f">> [매도 집행] {ticker} 전량 매도 진행 (수량: {info['balance']}, 현재가: {current_price})")
                             self.upbitInst.sell_market_order(ticker, info['balance'])
+                            
+                            # 실현 손익 기록 저장 추가
+                            self.record_trade_history(ticker, avg_buy_price, current_price, info['balance'])
+                            
                             send_message(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [실제] 매도 완료!!!\n코인: {ticker}\n평단가: {avg_buy_price:.2f} -> 매도가: {current_price:.2f}")
                         
                         # 트래킹 데이터 삭제

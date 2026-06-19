@@ -388,7 +388,7 @@
 
             <!-- Period Returns Card -->
             <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-title">기간별 투자 수익 현황</div>
+                <div class="card-title">기간별 실현 손익 현황 (매도 확정)</div>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
                     <!-- Daily Return -->
                     <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; text-align: center;">
@@ -603,9 +603,8 @@
                             valEl.innerText = `${sign}${formatKRW(ret.amount)}`;
                             valEl.className = pClass;
                             
-                            // 퍼센트 표시 및 initial 여부 구분
-                            const initialSuffix = ret.status === 'initial' ? ' (초기대비)' : '';
-                            pctEl.innerText = `${sign}${ret.ratio.toFixed(2)}%${initialSuffix}`;
+                            // 퍼센트 표시 (실현 수익률)
+                            pctEl.innerText = `${sign}${ret.ratio.toFixed(2)}%`;
                             pctEl.className = pClass;
                         }
                     });

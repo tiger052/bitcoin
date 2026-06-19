@@ -9,3 +9,4 @@ __pycache__/
 *.pyc
 b_dev/bitcoin_server/Log/*.log
 b_dev/bitcoin_server/assets_history.json
+b_dev/bitcoin_server/trade_history.json
