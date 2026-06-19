@@ -640,16 +640,21 @@
                                     <span style="font-size: 0.75rem; font-weight: 500;">${prefix}${formatKRW(totalPLAmount)}</span>
                                 </td>
                                 <td style="vertical-align: middle;">
-                                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
                                         <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary); gap: 0.3rem;">
                                             <span style="color: var(--danger-color); font-weight: 500;">손절: ${formatKRW(stopLossPrice)}</span>
                                             ${trailingStopHtml}
                                             <span style="color: var(--success-color); font-weight: 500;">목표: ${formatKRW(profitPrice)}</span>
                                         </div>
-                                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-top:2px;">
+                                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-top:2px; margin-bottom:2px;">
                                             <div style="position: absolute; left: 50%; width: 1px; height: 100%; background: rgba(255,255,255,0.3);"></div>
                                             <div style="position: absolute; left: ${percent}%; width: 10px; height: 10px; border-radius: 50%; background: ${plColorCode}; top: -3px; transform: translateX(-50%); box-shadow: 0 0 6px ${plColorCode}; z-index: 2;"></div>
                                             ${trailingStopDotHtml}
+                                        </div>
+                                        <div style="font-size: 0.62rem; color: rgba(255,255,255,0.35); display: flex; justify-content: space-between; padding: 0 2px; line-height: 1.1;">
+                                            <span>최초평단: ${formatKRW(info.avg_buy_price)}</span>
+                                            <span>최초손절: ${formatKRW(stopLossPrice)}</span>
+                                            <span>최초목표: ${formatKRW(profitPrice)}</span>
                                         </div>
                                     </div>
                                 </td>
