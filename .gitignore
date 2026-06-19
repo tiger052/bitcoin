@@ -8,3 +8,4 @@ b_dev/bitcoin_server/virtual_account.json
 __pycache__/
 *.pyc
 b_dev/bitcoin_server/Log/*.log
+b_dev/bitcoin_server/assets_history.json

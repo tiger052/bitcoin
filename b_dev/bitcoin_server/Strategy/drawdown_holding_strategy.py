@@ -7,7 +7,7 @@ import os
 import time
 import traceback
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pyupbit
 from Util.const import *
@@ -343,7 +343,129 @@ class DrawdownHoldingStrategy(threading.Thread):
         except Exception as e:
             saveLog(f">> [계좌 조회 에러] {e}")
             
+        # 자산 이력 실시간 저장 호출
+        if total_assets > 0:
+            self.save_assets_history(total_assets)
+            
         return krw, total_assets, balances
+
+    def save_assets_history(self, total_assets):
+        """자산 총액 이력을 assets_history.json에 누적 저장 (하루 최대 1회, 10분 이내 중복 파일 쓰기 방지)"""
+        now = datetime.now()
+        
+        # 10분 메모리 캐시 검사
+        if hasattr(self, "last_history_save_time"):
+            if (now - self.last_history_save_time).total_seconds() < 600:
+                return
+        
+        self.last_history_save_time = now
+        
+        try:
+            history_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets_history.json")
+            history = []
+            if os.path.exists(history_path):
+                try:
+                    with open(history_path, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                except Exception:
+                    history = []
+            
+            now_date_str = now.strftime("%Y-%m-%d")
+            
+            # 오늘 이미 기록했는지 날짜 기준 중복 검사
+            already_recorded = False
+            for record in history:
+                if record["timestamp"].startswith(now_date_str):
+                    # 오늘 날짜 기록이 이미 있으면 업데이트
+                    record["total_assets"] = total_assets
+                    already_recorded = True
+                    break
+            
+            if not already_recorded:
+                # 오늘 첫 기록인 경우 추가
+                history.append({
+                    "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+                    "total_assets": total_assets
+                })
+            
+            # 데이터 개수 제한 (2000개)
+            if len(history) > 2000:
+                history = history[-2000:]
+                
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
+                
+        except Exception as e:
+            print(f">> [자산 이력 저장 에러] {e}")
+
+    def get_period_returns(self, current_assets):
+        """일, 주, 월, 년 단위 수익 계산"""
+        returns = {
+            "daily": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
+            "weekly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
+            "monthly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"},
+            "yearly": {"amount": 0.0, "ratio": 0.0, "status": "no_data"}
+        }
+        
+        try:
+            history_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets_history.json")
+            history = []
+            if os.path.exists(history_path):
+                with open(history_path, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+                    
+            if not history:
+                return returns
+                
+            now = datetime.now()
+            
+            # 타겟 날짜 파싱 헬퍼
+            def find_closest_assets(target_days):
+                target_date = now - timedelta(days=target_days)
+                closest_record = None
+                min_diff = None
+                
+                for record in history:
+                    rec_time = datetime.strptime(record["timestamp"], "%Y-%m-%d %H:%M:%S")
+                    diff = abs((rec_time - target_date).total_seconds())
+                    
+                    # 하루 오차 범위(86400초) 이내의 매칭 중 가장 가까운 것 찾기
+                    if min_diff is None or diff < min_diff:
+                        min_diff = diff
+                        closest_record = record
+                
+                # 2일 이내 수준으로 근접한 매칭 데이터가 있으면 반환
+                if min_diff is not None and min_diff < 172800:
+                    return float(closest_record["total_assets"])
+                return None
+
+            # 최초 시작 자산 (모의 투자일 경우 기본 1,000,000원, 실거래면 history의 첫 번째 기록)
+            initial_assets = 1000000.0 if self.trade_mode == "TEST" else (float(history[0]["total_assets"]) if history else current_assets)
+
+            periods = {
+                "daily": 1,
+                "weekly": 7,
+                "monthly": 30,
+                "yearly": 365
+            }
+            
+            for key, days in periods.items():
+                past_assets = find_closest_assets(days)
+                
+                if past_assets is not None:
+                    amount = current_assets - past_assets
+                    ratio = (amount / past_assets) * 100
+                    returns[key] = {"amount": amount, "ratio": ratio, "status": "ok"}
+                else:
+                    # 해당 기간 과거 데이터가 없으면 최초 시작 시드(initial_assets)와 비교
+                    amount = current_assets - initial_assets
+                    ratio = (amount / initial_assets) * 100
+                    returns[key] = {"amount": amount, "ratio": ratio, "status": "initial"}
+                    
+        except Exception as e:
+            print(f">> [기간별 수익 계산 에러] {e}")
+            
+        return returns
 
     def run(self):
         saveLog(">> 트레이딩 스레드 루프 진입.")

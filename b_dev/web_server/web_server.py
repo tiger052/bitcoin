@@ -106,6 +106,9 @@ def get_status(user: str = Depends(get_current_user)):
         # 실시간 자산 및 잔고 조회
         krw, total_assets, balances = strategy_instance.get_account_balances()
         
+        # 기간별 투자 수익 계산
+        period_returns = strategy_instance.get_period_returns(total_assets)
+        
         # 로그 파일 최신 15줄 읽기
         log_path = os.path.join(project_root, "bitcoin_server", "Log", "output.log")
         logs = []
@@ -133,6 +136,7 @@ def get_status(user: str = Depends(get_current_user)):
             "trailing_stop_ratio": strategy_instance.trailing_stop_ratio,
             "fixed_stop_loss_ratio": strategy_instance.fixed_stop_loss_ratio,
             "fee_buffer": strategy_instance.fee_buffer,
+            "period_returns": period_returns,
             "logs": logs
         }
     except Exception as e:

@@ -386,6 +386,37 @@
                 </div>
             </div>
 
+            <!-- Period Returns Card -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-title">기간별 투자 수익 현황</div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <!-- Daily Return -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem;">일간 (1D)</div>
+                        <div id="returnDailyVal" style="font-size: 1.1rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0원</div>
+                        <div id="returnDailyPct" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">0.00%</div>
+                    </div>
+                    <!-- Weekly Return -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem;">주간 (1W)</div>
+                        <div id="returnWeeklyVal" style="font-size: 1.1rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0원</div>
+                        <div id="returnWeeklyPct" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">0.00%</div>
+                    </div>
+                    <!-- Monthly Return -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem;">월간 (1M)</div>
+                        <div id="returnMonthlyVal" style="font-size: 1.1rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0원</div>
+                        <div id="returnMonthlyPct" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">0.00%</div>
+                    </div>
+                    <!-- Yearly Return -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.3rem;">연간 (1Y)</div>
+                        <div id="returnYearlyVal" style="font-size: 1.1rem; font-weight: 700; font-family: 'Outfit', sans-serif;">0원</div>
+                        <div id="returnYearlyPct" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.2rem;">0.00%</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Positions Card -->
             <div class="card">
                 <div class="card-title">현재 보유 종목</div>
@@ -553,6 +584,31 @@
                 } else {
                     overallRateEl.innerText = '실거래 계좌';
                     overallRateEl.className = 'pos-plus';
+                }
+                
+                // 2.5 기간별 투자 수익 업데이트
+                if (data.period_returns) {
+                    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+                    const periods = ['daily', 'weekly', 'monthly', 'yearly'];
+                    periods.forEach(p => {
+                        const ret = data.period_returns[p];
+                        const valEl = document.getElementById(`return${capitalize(p)}Val`);
+                        const pctEl = document.getElementById(`return${capitalize(p)}Pct`);
+                        
+                        if (valEl && pctEl) {
+                            const sign = ret.amount >= 0 ? '+' : '';
+                            const pClass = ret.amount >= 0 ? 'pos-plus' : 'pos-minus';
+                            
+                            // 천단위 포맷
+                            valEl.innerText = `${sign}${formatKRW(ret.amount)}`;
+                            valEl.className = pClass;
+                            
+                            // 퍼센트 표시 및 initial 여부 구분
+                            const initialSuffix = ret.status === 'initial' ? ' (초기대비)' : '';
+                            pctEl.innerText = `${sign}${ret.ratio.toFixed(2)}%${initialSuffix}`;
+                            pctEl.className = pClass;
+                        }
+                    });
                 }
                 
                 // 3. 보유 종목 리스트 테이블 렌더링
