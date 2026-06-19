@@ -119,7 +119,7 @@
             margin: 0 auto;
             padding: 2rem;
             display: grid;
-            grid-template-columns: 1.4fr 1fr;
+            grid-template-columns: 1.7fr 0.8fr;
             gap: 2rem;
         }
 
@@ -651,10 +651,8 @@
                                             <div style="position: absolute; left: ${percent}%; width: 10px; height: 10px; border-radius: 50%; background: ${plColorCode}; top: -3px; transform: translateX(-50%); box-shadow: 0 0 6px ${plColorCode}; z-index: 2;"></div>
                                             ${trailingStopDotHtml}
                                         </div>
-                                        <div style="font-size: 0.62rem; color: rgba(255,255,255,0.35); display: flex; justify-content: space-between; padding: 0 2px; line-height: 1.1;">
-                                            <span>최초평단: ${formatKRW(info.avg_buy_price)}</span>
-                                            <span>최초손절: ${formatKRW(stopLossPrice)}</span>
-                                            <span>최초목표: ${formatKRW(profitPrice)}</span>
+                                        <div style="font-size: 0.62rem; color: rgba(255,255,255,0.35); padding: 0 2px; line-height: 1.1; text-align: left;">
+                                            최초 [평단: ${formatKRW(info.avg_buy_price)} | 손절: ${formatKRW(stopLossPrice)} | 목표: ${formatKRW(profitPrice)}]
                                         </div>
                                     </div>
                                 </td>
