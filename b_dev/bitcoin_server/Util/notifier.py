@@ -3,11 +3,17 @@ from Util.const import *
 
 def send_message(mes):
     try:
-        if snsType == SNSType.Line:
-            send_message_line(mes,LINE_API_TOKEN)
-        elif snsType == SNSType.Telegram:
+        # 토큰 설정이 비어있거나 플레이스홀더 기본값이면 알림 생략
+        if snsType == SNSType.Telegram:
+            if not TELEGRAM_API_TOKEN or "YOUR_" in TELEGRAM_API_TOKEN or not TELEGRAM_CHAT_ID or "YOUR_" in TELEGRAM_CHAT_ID:
+                return
             send_message_telegram(mes, TELEGRAM_CHAT_ID, TELEGRAM_API_TOKEN)
+        elif snsType == SNSType.Line:
+            if not LINE_API_TOKEN or "YOUR_" in LINE_API_TOKEN:
+                return
+            send_message_line(mes, LINE_API_TOKEN)
     except Exception as e:
+        # 알림 전송 에러가 발생해도 봇의 핵심 트레이딩 루프가 멈추지 않도록 예외 차단 및 로깅만 수행
         print(f">> [Notification Error] {e}")
 
 """ 
