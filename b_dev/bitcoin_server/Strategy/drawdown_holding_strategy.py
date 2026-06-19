@@ -207,13 +207,13 @@ class DrawdownHoldingStrategy(threading.Thread):
             
             # 상태 기록 업데이트
             self.universe_status[ticker] = {
-                "current_price": current_price,
-                "progress_ratio": progress_ratio,
-                "signal_desc": signal_desc,
-                "is_triggered": trigger
+                "current_price": float(current_price),
+                "progress_ratio": float(progress_ratio),
+                "signal_desc": str(signal_desc),
+                "is_triggered": bool(trigger)
             }
             
-            return trigger
+            return bool(trigger)
                         
         except Exception as e:
             saveLog(f">> [매수 판정 에러] {ticker}: {e}")

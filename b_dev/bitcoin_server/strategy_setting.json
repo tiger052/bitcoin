@@ -1,12 +1,12 @@
 {
   "trade_mode": "TEST",
-  "buy_strategy": "MA5_CROSSOVER",
+  "buy_strategy": "CANDLE_3_GREEN",
   "sell_strategy": "TRAILING_STOP_NO_LOSS",
   "portfolio_ratio": 0.05,
   "max_coin_count": 20,
-  "max_buy_amount": 50000.0,
-  "trailing_stop_ratio": 0.03,
-  "fixed_stop_loss_ratio": -0.03,
+  "max_buy_amount": 1000000.0,
+  "trailing_stop_ratio": 0.005,
+  "fixed_stop_loss_ratio": -0.005,
   "fee_buffer": 0.0015,
   "universe_size": 30
 }
